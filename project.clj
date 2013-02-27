@@ -1,4 +1,4 @@
-(defproject com.cemerick/clojurescript.test "0.0.1-SNAPSHOT"
+(defproject com.cemerick/clojurescript.test "0.0.1"
   :description "Port of clojure.test targeting ClojureScript."
   :url "http://github.com/cemerick/clojurescript.test"
   :license {:name "Eclipse Public License"
@@ -10,10 +10,18 @@
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
   
   :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.0-RC17"]]}
-             :dev {:dependencies [[com.cemerick/piggieback "0.0.4-SNAPSHOT"]]}}
+             :dev {:dependencies [[com.cemerick/piggieback "0.0.4"]]}}
   
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
                         "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}
+  
+  :plugins [[lein-cljsbuild "0.3.0"]]
+  :hooks [leiningen.cljsbuild]
+  :cljsbuild {:builds [{:source-paths ["src" "test"]
+                        :compiler {:output-to "target/cljs/testable.js"
+                                   :optimizations :whitespace
+                                   :pretty-print true}}]
+              :test-commands {"unit-tests" ["phantomjs" "run_tests.js" "target/cljs/testable.js"]}}  
   
   :aliases  {"all" ["with-profile" "dev:dev,1.5"]}
   

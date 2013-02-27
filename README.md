@@ -6,11 +6,11 @@ A maximal port of `clojure.test` to ClojureScript.
 
 ## Installation
 
-clojurescript.test is available in Maven Central. Add this `:dependency` to your Leiningen
-`project.clj`:
+clojurescript.test is available in Maven Central. Add this `:dependency` to
+your Leiningen `project.clj`:
 
 ```clojure
-[com.cemerick/clojurescript.test "0.0.1-SNAPSHOT"]
+[com.cemerick/clojurescript.test "0.0.1"]
 ```
 
 Or, add this to your Maven project's `pom.xml`:
@@ -19,13 +19,104 @@ Or, add this to your Maven project's `pom.xml`:
 <dependency>
   <groupId>com.cemerick</groupId>
   <artifactId>clojurescript.test</artifactId>
-  <version>0.0.1-SNAPSHOT</version>
+  <version>0.0.1</version>
 </dependency>
 ```
 
 ## Usage
 
-clojurescript.test provides roughly the same API as clojure.test, thus making writing portable tests 
+clojurescript.test provides roughly the same API as clojure.test, thus making
+writing portable tests possible.  e.g., here's a simple ClojureScript namespace
+that uses clojurescript.test:
+
+```clojure
+(ns cemerick.cljs.test.example
+  (:require-macros [cemerick.cljs.test :refer (is deftest with-test run-tests testing)])
+  (:require [cemerick.cljs.test :as t]))
+
+(deftest somewhat-less-wat
+  (is (= "{}[]" (+ {} []))))
+
+(deftest javascript-allows-div0
+  (is (= js/Infinity (/ 1 0) (/ (int 1) (int 0)))))
+
+(with-test
+  (defn pennies->dollar-string
+    [pennies]
+    {:pre [(integer? pennies)]}
+    (str "$" (int (/ pennies 100)) "." (mod pennies 100)))
+  (testing "assertions are nice"
+    (is (thrown-with-msg? js/Error #"integer?" (pennies->dollar-string 564.2)))))
+```
+
+You can load this into a ClojureScript REPL, and run its tests using familiar functions:
+
+```clojure
+=> (t/test-ns 'cemerick.cljs.test.example)
+
+Testing cemerick.cljs.test.example
+{:fail 0, :pass 3, :test 3, :error 0}
+```
+
+All of the test-definition macro (`deftest` and `with-test`, as well as the
+`set-test`) add to a global registry of available tests (necessary given
+ClojureScript's lack of namespaces), so you can also define, redefine, and run
+tests interactively:
+
+```clojure
+=> (deftest dumb-test
+     (is (empty? (filter even? (range 20)))))
+#<[object Object]>
+nil
+=> (t/test-ns 'cemerick.cljs.test.example)
+
+Testing cemerick.cljs.test.example
+
+FAIL in (dumb-test) (:0)
+expected: (empty? (filter even? (range 20)))
+  actual: (not (empty? (0 2 4 6 8 10 12 14 16 18)))
+{:fail 1, :pass 3, :test 4, :error 0}
+```
+
+### Using with lein-cljsbuild
+
+Most people use [lein-cljsbuild]() to automate their ClojureScript builds.  It
+also provides a test runner, originally intended for use with e.g.
+[phantomjs]() to run tests that use existing JavaScript test frameworks.
+However, you can easily use the same facility to run clojurescript.test tests.
+
+This is the lein-cljsbuild configuration that this project uses to run its own
+clojurescript.test tests (look in the `project.clj` file for the full monty):
+
+```clojure
+:plugins [[lein-cljsbuild "0.3.0"]]
+:hooks [leiningen.cljsbuild]
+:cljsbuild {:builds [{:source-paths ["src" "test"]
+                      :compiler {:output-to "target/cljs/testable.js"
+                                 :optimizations :whitespace
+                                 :pretty-print true}}]
+            :test-commands {"unit-tests" ["phantomjs" "run_tests.js" "target/cljs/testable.js"]}}
+```
+
+Everything here is fairly basic, except for the `:test-commands` entries, which
+describes the shell command that will be executed when lein-cljsbuild's test
+phase is invoked (either via `lein cljsbuild test`, or just `lein test` because
+its hook is registered).  In this case, it's going to run the `run_tests.js`
+script using `phantomjs`, which will load the output of our ClojureScript
+compilation, run all of the tests found therein, report on them, and fail the
+build if necessary.
+
+Feel free to grab the `run_tests.js` script for your own projects (or, even
+better, figure out a way to easily package it with clojurescript.test itself,
+so only one such script will need to be maintained, etc).
+
+## Limitations
+
+* Bug: filenames and line numbers are not currently reported properly.
+* **clojurescript.test will not work under Google Closure advanced
+  compilation.**  This is due to the runtime-dynamic way that tests are
+currently registered and looked up.  Some alternative approach may be taken in
+the future to support advanced compilation.
 
 ## Differences from `clojure.test`
 
@@ -33,22 +124,55 @@ clojurescript.test provides roughly the same API as clojure.test, thus making wr
 * Namespace test hooks must be defined using the `deftesthook` macro
 
 ### Runtime
+
 * `*report-counters*` is now bound to an atom, not a ref
 * `*testing-vars*` now holds symbols naming the top-levels under test, not vars
-* `*test-out*` is replaced by `*test-print-fn*`, which defaults to `nil`, and is only bound to `cljs.core/*print-fn*` if it is bound to a non-nil value.
-* `run-tests` is now a macro; `run-tests*` does the same, but does not offer a no-arg arity
+* `*test-out*` is replaced by `*test-print-fn*`, which defaults to `nil`, and
+  is only bound to `cljs.core/*print-fn*` if it is bound to a non-nil value.
+* `run-tests` is now a macro; `run-tests*` does the same, but does not offer a
+  no-arg arity
 
 ### Errors
-* Stack traces from caught exceptions are obtained via [`Error.stack`](https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Error/Stack), which appears to only be supported in Chrome, FF, Safari, and IE 10+. The value of `Error.stack` in Rhino (at least, the version specified for use by ClojureScript) is always an empty string; other JavaScript environments may be similar.
-* File and line numbers of reported exception failures may be missing in JavaScript environments that do not support the `lineNumber` or `fileName` properties of `Error`.
+
+* Stack traces from caught exceptions are obtained via
+  [`Error.stack`](https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Error/Stack),
+which appears to only be supported in Chrome, FF, Safari, and IE 10+. The value
+of `Error.stack` in Rhino (at least, the version specified for use by
+ClojureScript) is always an empty string; other JavaScript environments may be
+similar.
+* File and line numbers of reported exception failures may be missing in
+  JavaScript environments that do not support the `lineNumber` or `fileName`
+properties of `Error`.
 
 ### Removed
+
 * All fixture facilities; perhaps to be reintroduced
-* `*load-tests*` is now private, and will probably be removed.  The use case for Clojure (which is rarely taken advantage of AFAICT) seems irrelevant for ClojureScript; if you do or don't want tests in production, you just change your cljsc/lein-cljsbuild configuration.
+* `*load-tests*` is now private, and will probably be removed.  The use case
+  for Clojure (which is rarely taken advantage of AFAICT) seems irrelevant for
+ClojureScript; if you do or don't want tests in production, you just change
+your cljsc/lein-cljsbuild configuration.
 * `file-position` was already deprecated and unused
 * Not applicable
  * `get-possibly-unbound-var`
  * `function?`
  * `*stack-trace-depth*`
 
+## Need Help?
 
+Send a message to the [clojure-tools](http://groups.google.com/group/clojure-tools)
+mailing list, or ping `cemerick` on freenode irc or 
+[twitter](http://twitter.com/cemerick) if you have questions
+or would like to contribute patches.
+
+## License
+
+Copyright © 2013 Chas Emerick and other contributors.  Known contributors to `clojure.test` (which was the initial raw ingredient for this project) are:
+
+* Stuart Sierra
+* Rich Hickey
+* Stuart Halloway
+* Phil Hagelberg
+* Tassilo Horn
+* Mike Hinchey
+
+Distributed under the Eclipse Public License, the same as Clojure.

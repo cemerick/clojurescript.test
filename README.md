@@ -80,10 +80,11 @@ expected: (empty? (filter even? (range 20)))
 
 ### Using with lein-cljsbuild
 
-Most people use [lein-cljsbuild]() to automate their ClojureScript builds.  It
-also provides a test runner, originally intended for use with e.g.
-[phantomjs]() to run tests that use existing JavaScript test frameworks.
-However, you can easily use the same facility to run clojurescript.test tests.
+Most people use [lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild) to
+automate their ClojureScript builds.  It also provides a test runner,
+originally intended for use with e.g.  [phantomjs](http://phantomjs.org/) to
+run tests that use existing JavaScript test frameworks.  However, you can
+easily use the same facility to run clojurescript.test tests.
 
 This is the lein-cljsbuild configuration that this project uses to run its own
 clojurescript.test tests (look in the `project.clj` file for the full monty):

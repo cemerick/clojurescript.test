@@ -51,7 +51,9 @@
   (is (thrown? js/SyntaxError (throw (js/Error.))) "Should error"))
 
 (deftest can-test-thrown-with-msg
-  (is (thrown-with-msg? js/SyntaxError #"[Uu]nterminated parenthetical" (js/RegExp. "f(")) "Should pass")
+  ;; coming up with error messages that are standard across js runtime isn't easy...
+  (is (thrown-with-msg? js/SyntaxError #"[Uu]nterminated parenthetical|Invalid regular expression"
+        (js/RegExp. "f(")) "Should pass")
   ;; Wrong message string:
   (is (thrown-with-msg? js/SyntaxError #"foo" (/ 1 0)) "Should fail")
   ;; No exception is thrown:

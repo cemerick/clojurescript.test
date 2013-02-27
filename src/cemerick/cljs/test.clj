@@ -212,7 +212,7 @@
 
    For additional event types, see the examples in the code.
 "}
-  clojurescript.test
+  cemerick.cljs.test
   (:require cljs.compiler
             [cljs.analyzer :refer (*cljs-ns*)]
             [clojure.template :as temp]))

@@ -1,5 +1,5 @@
-(ns clojurescript.test
-  (:require-macros [clojurescript.test :refer (with-test-out)]))
+(ns cemerick.cljs.test
+  (:require-macros [cemerick.cljs.test :refer (with-test-out)]))
 
 ;;; GLOBALS USED BY THE REPORTING FUNCTIONS
 

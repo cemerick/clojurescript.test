@@ -14,9 +14,9 @@
 ;; Thanks to Chas Emerick, Allen Rohner, and Stuart Halloway for
 ;; contributions and suggestions.
 
-(ns clojurescript.test.basic
-  (:require-macros [clojurescript.test :as m :refer (is deftest run-tests deftesthook)])
-  (:require [clojurescript.test :as t]))
+(ns cemerick.cljs.test.basic
+  (:require-macros [cemerick.cljs.test :as m :refer (is deftest run-tests deftesthook)])
+  (:require [cemerick.cljs.test :as t]))
 
 (deftest can-test-symbol
   (let [x true]
@@ -103,4 +103,4 @@
 (deftesthook test-ns-hook []
   (binding [original-report t/report
             t/report custom-report]
-    (t/test-all-vars 'clojurescript.test.basic)))
+    (t/test-all-vars 'cemerick.cljs.test.basic)))

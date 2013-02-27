@@ -4,6 +4,13 @@ A maximal port of `clojure.test` to ClojureScript.
 
 ## Why?
 
+I want to be able to write portable tests to go along with my portable
+Clojure[Script], and `clojure.test`'s model is Good Enough™ (it's better than
+that, actually).  Combine with something like
+[cljx](https://github.com/lynaghk/cljx) or
+[lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild)'s crossovers to
+make your ClojureScripting a whole lot more pleasant.
+
 ## Installation
 
 clojurescript.test is available in Maven Central. Add this `:dependency` to

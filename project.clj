@@ -9,7 +9,8 @@
   
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
   
-  :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.0-RC17"]]}}
+  :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.0-RC17"]]}
+             :dev {:dependencies [[com.cemerick/piggieback "0.0.4-SNAPSHOT"]]}}
   
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
                         "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}

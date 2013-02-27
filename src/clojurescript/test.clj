@@ -1,23 +1,11 @@
-;   Copyright (c) Rich Hickey. All rights reserved.
-;   The use and distribution terms for this software are covered by the
-;   Eclipse Public License 1.0 (http://opensource.org/licenses/eclipse-1.0.php)
-;   which can be found in the file epl-v10.html at the root of this distribution.
-;   By using this software in any fashion, you are agreeing to be bound by
-;   the terms of this license.
-;   You must not remove this notice, or any other, from this software.
-
-;;; test.clj: test framework for Clojure
-
-;; by Stuart Sierra
-;; March 28, 2009
-
-;; Thanks to Chas Emerick, Allen Rohner, and Stuart Halloway for
-;; contributions and suggestions.
-
 (ns 
   ^{:author "Stuart Sierra, with contributions and suggestions by 
   Chas Emerick, Allen Rohner, and Stuart Halloway",
      :doc "A unit testing framework.
+
+   NOTE: This documentation is copied verbatim from clojure.test,
+   and describes behaviour that does not apply to this ClojureScript port.
+   Proper documentation to follow. :-P
 
    ASSERTIONS
 
@@ -148,13 +136,6 @@
    Note: test-ns-hook prevents execution of fixtures (see below).
 
 
-   OMITTING TESTS FROM PRODUCTION CODE
-
-   You can bind the variable \"*load-tests*\" to false when loading or
-   compiling code in production.  This will prevent any tests from
-   being created by \"with-test\" or \"deftest\".
-
-
    FIXTURES
 
    Fixtures allow you to run code before and after tests, to set up
@@ -231,191 +212,35 @@
 
    For additional event types, see the examples in the code.
 "}
-  clojure.test
-  (:require [clojure.template :as temp]
-            [clojure.stacktrace :as stack]))
+  clojurescript.test
+  (:require cljs.compiler
+            [cljs.analyzer :refer (*cljs-ns*)]
+            [clojure.template :as temp]))
 
-;; Nothing is marked "private" here, so you can rebind things to plug
-;; in your own testing or reporting frameworks.
-
-
-;;; USER-MODIFIABLE GLOBALS
-
-(defonce ^:dynamic
+;; TODO seems like there's no reason to expose this for cljs; you're not
+;; likely to be shipping .cljs files into production
+(defonce ^:dynamic ^:private
   ^{:doc "True by default.  If set to false, no test functions will
    be created by deftest, set-test, or with-test.  Use this to omit
    tests when compiling or loading production code."
     :added "1.1"}
   *load-tests* true)
 
-(def ^:dynamic
- ^{:doc "The maximum depth of stack traces to print when an Exception
-  is thrown during a test.  Defaults to nil, which means print the 
-  complete stack trace."
-   :added "1.1"}
- *stack-trace-depth* nil)
-
-
-;;; GLOBALS USED BY THE REPORTING FUNCTIONS
-
-(def ^:dynamic *report-counters* nil)	  ; bound to a ref of a map in test-ns
-
-(def ^:dynamic *initial-report-counters*  ; used to initialize *report-counters*
-     {:test 0, :pass 0, :fail 0, :error 0})
-
-(def ^:dynamic *testing-vars* (list))  ; bound to hierarchy of vars being tested
-
-(def ^:dynamic *testing-contexts* (list)) ; bound to hierarchy of "testing" strings
-
-(def ^:dynamic *test-out* *out*)         ; PrintWriter for test reporting output
-
 (defmacro with-test-out
-  "Runs body with *out* bound to the value of *test-out*."
+  "Runs body with *print-fn* bound to the value of *test-print-fn* is bound non-nil."
   {:added "1.1"}
   [& body]
-  `(binding [*out* *test-out*]
+  `(binding [cljs.core/*print-fn* (or *test-print-fn* cljs.core/*print-fn*)]
      ~@body))
 
-;;; UTILITIES FOR REPORTING FUNCTIONS
-
-(defn file-position
-  "Returns a vector [filename line-number] for the nth call up the
-  stack.
-
-  Deprecated in 1.2: The information needed for test reporting is
-  now on :file and :line keys in the result map."
-  {:added "1.1"
-   :deprecated "1.2"}
-  [n]
-  (let [^StackTraceElement s (nth (.getStackTrace (new java.lang.Throwable)) n)]
-    [(.getFileName s) (.getLineNumber s)]))
-
-(defn testing-vars-str
-  "Returns a string representation of the current test.  Renders names
-  in *testing-vars* as a list, then the source file and line of
-  current assertion."
-  {:added "1.1"}
-  [m]
-  (let [{:keys [file line]} m]
-    (str
-     ;; Uncomment to include namespace in failure report:
-     ;;(ns-name (:ns (meta (first *testing-vars*)))) "/ "
-     (reverse (map #(:name (meta %)) *testing-vars*))
-     " (" file ":" line ")")))
-
-(defn testing-contexts-str
-  "Returns a string representation of the current test context. Joins
-  strings in *testing-contexts* with spaces."
-  {:added "1.1"}
-  []
-  (apply str (interpose " " (reverse *testing-contexts*))))
-
-(defn inc-report-counter
-  "Increments the named counter in *report-counters*, a ref to a map.
-  Does nothing if *report-counters* is nil."
-  {:added "1.1"}
-  [name]
-  (when *report-counters*
-    (dosync (commute *report-counters* assoc name
-                     (inc (or (*report-counters* name) 0))))))
-
-;;; TEST RESULT REPORTING
-
-(defmulti
-  ^{:doc "Generic reporting function, may be overridden to plug in
-   different report formats (e.g., TAP, JUnit).  Assertions such as
-   'is' call 'report' to indicate results.  The argument given to
-   'report' will be a map with a :type key.  See the documentation at
-   the top of test_is.clj for more information on the types of
-   arguments for 'report'."
-     :dynamic true
-     :added "1.1"}
-  report :type)
-
-(defn- file-and-line 
-  [exception depth]
-  (let [^StackTraceElement s (nth (.getStackTrace exception) depth)]
-    {:file (.getFileName s) :line (.getLineNumber s)}))
-
-(defn do-report
-  "Add file and line information to a test result and call report.
-   If you are writing a custom assert-expr method, call this function
-   to pass test results to report."
-  {:added "1.2"}
-  [m]
-  (report
-   (case
-    (:type m)
-    :fail (merge (file-and-line (new java.lang.Throwable) 1) m)
-    :error (merge (file-and-line (:actual m) 0) m) 
-    m)))
-
-(defmethod report :default [m]
-  (with-test-out (prn m)))
-
-(defmethod report :pass [m]
-  (with-test-out (inc-report-counter :pass)))
-
-(defmethod report :fail [m]
-  (with-test-out
-    (inc-report-counter :fail)
-    (println "\nFAIL in" (testing-vars-str m))
-    (when (seq *testing-contexts*) (println (testing-contexts-str)))
-    (when-let [message (:message m)] (println message))
-    (println "expected:" (pr-str (:expected m)))
-    (println "  actual:" (pr-str (:actual m)))))
-
-(defmethod report :error [m]
-  (with-test-out
-   (inc-report-counter :error)
-   (println "\nERROR in" (testing-vars-str m))
-   (when (seq *testing-contexts*) (println (testing-contexts-str)))
-   (when-let [message (:message m)] (println message))
-   (println "expected:" (pr-str (:expected m)))
-   (print "  actual: ")
-   (let [actual (:actual m)]
-     (if (instance? Throwable actual)
-       (stack/print-cause-trace actual *stack-trace-depth*)
-       (prn actual)))))
-
-(defmethod report :summary [m]
-  (with-test-out
-   (println "\nRan" (:test m) "tests containing"
-            (+ (:pass m) (:fail m) (:error m)) "assertions.")
-   (println (:fail m) "failures," (:error m) "errors.")))
-
-(defmethod report :begin-test-ns [m]
-  (with-test-out
-   (println "\nTesting" (ns-name (:ns m)))))
-
-;; Ignore these message types:
-(defmethod report :end-test-ns [m])
-(defmethod report :begin-test-var [m])
-(defmethod report :end-test-var [m])
-
-
-
 ;;; UTILITIES FOR ASSERTIONS
-
-(defn get-possibly-unbound-var
-  "Like var-get but returns nil if the var is unbound."
-  {:added "1.1"}
-  [v]
-  (try (var-get v)
-       (catch IllegalStateException e
-         nil)))
 
 (defn function?
   "Returns true if argument is a function or a symbol that resolves to
   a function (not a macro)."
   {:added "1.1"}
   [x]
-  (if (symbol? x)
-    (when-let [v (resolve x)]
-      (when-let [value (get-possibly-unbound-var v)]
-        (and (fn? value)
-             (not (:macro (meta v))))))
-    (fn? x)))
+  (and (symbol? x) (not (.startsWith (name x) "."))))
 
 (defn assert-predicate
   "Returns generic assertion code for any functional predicate.  The
@@ -469,20 +294,19 @@
   `(do-report {:type :fail, :message ~msg}))
 
 (defmethod assert-expr :default [msg form]
-  (if (and (sequential? form) (function? (first form)))
+  (if (and (seq? form) (function? (first form)))
     (assert-predicate msg form)
     (assert-any msg form)))
 
 (defmethod assert-expr 'instance? [msg form]
   ;; Test if x is an instance of y.
-  `(let [klass# ~(nth form 1)
-         object# ~(nth form 2)]
-     (let [result# (instance? klass# object#)]
+  `(let [object# ~(nth form 2)]
+     (let [result# (instance? ~(nth form 1) object#)]
        (if result#
          (do-report {:type :pass, :message ~msg,
-                  :expected '~form, :actual (class object#)})
+                  :expected '~form, :actual (type object#)})
          (do-report {:type :fail, :message ~msg,
-                  :expected '~form, :actual (class object#)}))
+                  :expected '~form, :actual (type object#)}))
        result#)))
 
 (defmethod assert-expr 'thrown? [msg form]
@@ -510,7 +334,7 @@
     `(try ~@body
           (do-report {:type :fail, :message ~msg, :expected '~form, :actual nil})
           (catch ~klass e#
-            (let [m# (.getMessage e#)]
+            (let [m# (.-message e#)]
               (if (re-find ~re m#)
                 (do-report {:type :pass, :message ~msg,
                          :expected '~form, :actual e#})
@@ -525,7 +349,7 @@
   {:added "1.1"}
   [msg form]
   `(try ~(assert-expr msg form)
-        (catch Throwable t#
+        (catch js/Error t#
           (do-report {:type :error, :message ~msg,
                       :expected '~form, :actual t#}))))
 
@@ -586,9 +410,25 @@
   `(binding [*testing-contexts* (conj *testing-contexts* ~string)]
      ~@body))
 
-
-
 ;;; DEFINING TESTS
+
+(defn- munged-symbol
+  [& strs]
+  (symbol (cljs.compiler/munge (apply str strs))))
+
+;; metadata on functions (esp top level fns?) in cljs is bizarre;
+;; the result of with-meta isn't a js/Function, but it is an IFn?
+;; TODO might be better to just define another top-level and register
+;; that instead
+(defmacro set-test
+  [name & body]
+  (when *load-tests*
+    `(do
+       (set! ~name (vary-meta ~name assoc
+                     :name '~name
+                     :test (fn ~(symbol (str name "-test")) [] ~@body)))
+       (register-test! '~*cljs-ns* '~(munged-symbol *cljs-ns* "." name))
+       ~name)))
 
 (defmacro with-test
   "Takes any definition form (that returns a Var) as the first argument.
@@ -598,10 +438,7 @@
   the tests."
   {:added "1.1"}
   [definition & body]
-  (if *load-tests*
-    `(doto ~definition (alter-meta! assoc :test (fn [] ~@body)))
-    definition))
-
+  `(do ~definition (set-test ~(second definition) ~@body)))
 
 (defmacro deftest
   "Defines a test function with no arguments.  Test functions may call
@@ -617,155 +454,38 @@
   {:added "1.1"}
   [name & body]
   (when *load-tests*
-    `(def ~(vary-meta name assoc :test `(fn [] ~@body))
-          (fn [] (test-var (var ~name))))))
+    `(do
+       (defn ~name [] (test-var ~name))
+       (set-test ~name ~@body))))
 
 (defmacro deftest-
   "Like deftest but creates a private var."
   {:added "1.1"}
   [name & body]
-  (when *load-tests*
-    `(def ~(vary-meta name assoc :test `(fn [] ~@body) :private true)
-          (fn [] (test-var (var ~name))))))
+  `(deftest ~(vary-meta name assoc :private true) ~@body))
 
-
-(defmacro set-test
-  "Experimental.
-  Sets :test metadata of the named var to a fn with the given body.
-  The var must already exist.  Does not modify the value of the var.
-
-  When *load-tests* is false, set-test is ignored."
-  {:added "1.1"}
+(defmacro deftesthook
   [name & body]
-  (when *load-tests*
-    `(alter-meta! (var ~name) assoc :test (fn [] ~@body))))
-
-
+  `(do
+     (defn ~name ~@body)
+     (register-test-ns-hook! '~*cljs-ns* '~(munged-symbol *cljs-ns* "." name))
+     ~name))
 
 ;;; DEFINING FIXTURES
 
-(defn- add-ns-meta
-  "Adds elements in coll to the current namespace metadata as the
-  value of key."
-  {:added "1.1"}
-  [key coll]
-  (alter-meta! *ns* assoc key coll))
-
-(defmulti use-fixtures
+(defmacro use-fixtures
   "Wrap test runs in a fixture function to perform setup and
   teardown. Using a fixture-type of :each wraps every test
-  individually, while:once wraps the whole run in a single function."
-  {:added "1.1"}
-  (fn [fixture-type & args] fixture-type))
+  individually, while :once wraps the whole run in a single function."
+  [fixture-type & args]
+  `(use-fixtures* '~(munged-symbol *cljs-ns*) ~fixture-type ~@args))
 
-(defmethod use-fixtures :each [fixture-type & args]
-  (add-ns-meta ::each-fixtures args))
+;;; RUNNING TESTS; (many more options available in test.cljs)
 
-(defmethod use-fixtures :once [fixture-type & args]
-  (add-ns-meta ::once-fixtures args))
-
-(defn- default-fixture
-  "The default, empty, fixture function.  Just calls its argument."
-  {:added "1.1"}
-  [f]
-  (f))
-
-(defn compose-fixtures
-  "Composes two fixture functions, creating a new fixture function
-  that combines their behavior."
-  {:added "1.1"}
-  [f1 f2]
-  (fn [g] (f1 (fn [] (f2 g)))))
-
-(defn join-fixtures
-  "Composes a collection of fixtures, in order.  Always returns a valid
-  fixture function, even if the collection is empty."
-  {:added "1.1"}
-  [fixtures]
-  (reduce compose-fixtures default-fixture fixtures))
-
-
-
-
-;;; RUNNING TESTS: LOW-LEVEL FUNCTIONS
-
-(defn test-var
-  "If v has a function in its :test metadata, calls that function,
-  with *testing-vars* bound to (conj *testing-vars* v)."
-  {:dynamic true, :added "1.1"}
-  [v]
-  (when-let [t (:test (meta v))]
-    (binding [*testing-vars* (conj *testing-vars* v)]
-      (do-report {:type :begin-test-var, :var v})
-      (inc-report-counter :test)
-      (try (t)
-           (catch Throwable e
-             (do-report {:type :error, :message "Uncaught exception, not in assertion."
-                      :expected nil, :actual e})))
-      (do-report {:type :end-test-var, :var v}))))
-
-(defn test-all-vars
-  "Calls test-var on every var interned in the namespace, with fixtures."
-  {:added "1.1"}
-  [ns]
-  (let [once-fixture-fn (join-fixtures (::once-fixtures (meta ns)))
-        each-fixture-fn (join-fixtures (::each-fixtures (meta ns)))]
-    (once-fixture-fn
-     (fn []
-       (doseq [v (vals (ns-interns ns))]
-         (when (:test (meta v))
-           (each-fixture-fn (fn [] (test-var v)))))))))
-
-(defn test-ns
-  "If the namespace defines a function named test-ns-hook, calls that.
-  Otherwise, calls test-all-vars on the namespace.  'ns' is a
-  namespace object or a symbol.
-
-  Internally binds *report-counters* to a ref initialized to
-  *inital-report-counters*.  Returns the final, dereferenced state of
-  *report-counters*."
-  {:added "1.1"}
-  [ns]
-  (binding [*report-counters* (ref *initial-report-counters*)]
-    (let [ns-obj (the-ns ns)]
-      (do-report {:type :begin-test-ns, :ns ns-obj})
-      ;; If the namespace has a test-ns-hook function, call that:
-      (if-let [v (find-var (symbol (str (ns-name ns-obj)) "test-ns-hook"))]
-	((var-get v))
-        ;; Otherwise, just test every var in the namespace.
-        (test-all-vars ns-obj))
-      (do-report {:type :end-test-ns, :ns ns-obj}))
-    @*report-counters*))
-
-
-
-;;; RUNNING TESTS: HIGH-LEVEL FUNCTIONS
-
-(defn run-tests
+(defmacro run-tests
   "Runs all tests in the given namespaces; prints results.
   Defaults to current namespace if none given.  Returns a map
   summarizing test results."
   {:added "1.1"}
-  ([] (run-tests *ns*))
-  ([& namespaces]
-     (let [summary (assoc (apply merge-with + (map test-ns namespaces))
-                     :type :summary)]
-       (do-report summary)
-       summary)))
-
-(defn run-all-tests
-  "Runs all tests in all namespaces; prints results.
-  Optional argument is a regular expression; only namespaces with
-  names matching the regular expression (with re-matches) will be
-  tested."
-  {:added "1.1"}
-  ([] (apply run-tests (all-ns)))
-  ([re] (apply run-tests (filter #(re-matches re (name (ns-name %))) (all-ns)))))
-
-(defn successful?
-  "Returns true if the given test summary indicates all tests
-  were successful, false otherwise."
-  {:added "1.1"}
-  [summary]
-  (and (zero? (:fail summary 0))
-       (zero? (:error summary 0))))
+  ([] `(run-tests* '~*cljs-ns*))
+  ([& namespaces] `(run-tests* ~@namespaces)))

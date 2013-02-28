@@ -13,7 +13,7 @@
                         :compiler {:output-to "target/cljs/testable.js"
                                    :optimizations :whitespace
                                    :pretty-print true}}]
-              :test-commands {"unit-tests" ["phantomjs" "run_tests.js" "target/cljs/testable.js"]}}  
+              :test-commands {"unit-tests" ["runners/phantomjs.js" "target/cljs/testable.js"]}}  
   
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
   

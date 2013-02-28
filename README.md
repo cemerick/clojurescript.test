@@ -110,20 +110,22 @@ clojurescript.test tests (look in the `project.clj` file for the full monty):
                       :compiler {:output-to "target/cljs/testable.js"
                                  :optimizations :whitespace
                                  :pretty-print true}}]
-            :test-commands {"unit-tests" ["phantomjs" "run_tests.js" "target/cljs/testable.js"]}}
+            :test-commands {"unit-tests" ["runners/phantomjs.js" "target/cljs/testable.js"]}}
 ```
 
 Everything here is fairly basic, except for the `:test-commands` entries, which
 describes the shell command that will be executed when lein-cljsbuild's test
 phase is invoked (either via `lein cljsbuild test`, or just `lein test` because
-its hook is registered).  In this case, it's going to run the `run_tests.js`
-script using `phantomjs`, which will load the output of our ClojureScript
+its hook is registered).  In this case, it's going to run the `phantomjs.js`
+script (which shebangs to `phantomjs`), which will load the output of our ClojureScript
 compilation, run all of the tests found therein, report on them, and fail the
 build if necessary.
 
-Feel free to grab the `run_tests.js` script for your own projects (or, even
+Feel free to grab the `runners/phantomjs.js` script for your own projects (or, even
 better, figure out a way to easily package it with clojurescript.test itself,
 so only one such script will need to be maintained, etc).
+
+**Wanted: runners for other JavaScript environments, e.g. Rhino, XUL, node, etc**
 
 ## Limitations
 

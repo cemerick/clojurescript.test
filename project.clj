@@ -6,15 +6,7 @@
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/clojurescript "0.0-1586"]]
-  
-  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
-  
-  :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.0-RC17"]]}
-             :dev {:dependencies [[com.cemerick/piggieback "0.0.4"]]}}
-  
-  :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
-                        "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}
-  
+    
   :plugins [[lein-cljsbuild "0.3.0"]]
   :hooks [leiningen.cljsbuild]
   :cljsbuild {:builds [{:source-paths ["src" "test"]
@@ -23,7 +15,15 @@
                                    :pretty-print true}}]
               :test-commands {"unit-tests" ["phantomjs" "run_tests.js" "target/cljs/testable.js"]}}  
   
+  :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+  
+  :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.0-RC17"]]}
+             :dev {:dependencies [[com.cemerick/piggieback "0.0.4"]]}}
+
   :aliases  {"all" ["with-profile" "dev:dev,1.5"]}
+  
+  :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
+                        "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}
   
   ;;maven central requirements
   :scm {:url "git@github.com:cemerick/clojurescript.test.git"}

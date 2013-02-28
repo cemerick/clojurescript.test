@@ -168,7 +168,7 @@ your cljsc/lein-cljsbuild configuration.
 
 ## Need Help?
 
-Send a message to the [clojure-tools](http://groups.google.com/group/clojure-tools)
+Send a message to the [ClojureScript](http://groups.google.com/group/clojurescript)
 mailing list, or ping `cemerick` on freenode irc or 
 [twitter](http://twitter.com/cemerick) if you have questions
 or would like to contribute patches.

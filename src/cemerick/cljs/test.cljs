@@ -18,15 +18,19 @@
 ; *print-fn* for emitting test output
 (def ^:dynamic *test-print-fn* nil)
 
-;;; namespaces are awesome
+;;; "Namespaces are one honking great idea -- let's do more of those!"
 ;; this approach means that advanced compilation will completely break test "discovery"
 ;; TODO may eventually just register the test fn directly, so that tests can be run in
 ;; all compilation modes
 
+
+; could skip the atoms in this environment....
 ; atom mapping namespace symbols to sets of top-level test "var" symbols
-; could skip the atom in this environment....
 (def registered-tests (atom {}))
+; atom mapping namespace symbols to top-level namespace-hook "var" symbols
 (def registered-test-hooks (atom {}))
+; atom mapping namespace symbols to collections of fixture fns
+(def registered-fixtures (atom {}))
 
 (defn register-test!
   [ns name]
@@ -140,30 +144,12 @@
 
 ;;; REGISTERING FIXTURES
 
-(defn- add-ns-meta
-  "Adds elements in coll to the registered namespace-symbol's metadata as the
-  value of key."
-  {:added "1.1"}
-  [ns-sym key coll]
-  (swap! registered-tests
-    (fn [m]
-      (let [ns-sym (or
-                     (some #{ns-sym} (keys m))
-                     ns-sym)]
-        (assoc m (vary-meta ns-sym assoc key coll) (m ns-sym))))))
-
-(defmulti ^:private register-fixtures
+(defn register-fixtures!
   "Wrap test runs in a fixture function to perform setup and
   teardown. Using a fixture-type of :each wraps every test
   individually, while :once wraps the whole run in a single function."
-  {:added "1.1"}
-  (fn [ns-sym fixture-type & args] fixture-type))
-
-(defmethod register-fixtures :each [ns-sym fixture-type & args]
-  (add-ns-meta ns-sym ::each-fixtures args))
-
-(defmethod register-fixtures :once [ns-sym fixture-type & args]
-  (add-ns-meta ns-sym ::once-fixtures args))
+  [ns-sym fixture-type & fixture-fns]
+  (swap! registered-fixtures update-in [ns-sym fixture-type] (constantly fixture-fns)))
 
 (defn- default-fixture
   "The default, empty, fixture function.  Just calls its argument."
@@ -185,14 +171,14 @@
   [fixtures]
   (reduce compose-fixtures default-fixture fixtures))
 
-
 ;;; RUNNING TESTS: LOW-LEVEL FUNCTIONS
-
+;; TODO since there's no vars, rename these helpers to *-fn?
 (defn test-var
   "If v has a function in its :test metadata, calls that function,
   with *testing-vars* bound to (conj *testing-vars* v)."
   {:dynamic true, :added "1.1"}
   [v]
+  (assert (fn? v) "test-var must be passed the function to be tested (not a symbol naming it)")
   (when-let [t (:test (meta v))]
     (binding [*testing-vars* (conj *testing-vars* (or (:name (meta v)) v))]
       (do-report {:type :begin-test-var, :var v})
@@ -207,9 +193,8 @@
   "Calls test-var on every var interned in the namespace, with fixtures."
   {:added "1.1"}
   [ns-sym]
-  (let [ns-sym (some #{ns-sym} (keys @registered-tests))
-        once-fixture-fn (join-fixtures (::once-fixtures (meta ns-sym)))
-        each-fixture-fn (join-fixtures (::each-fixtures (meta ns-sym)))]
+  (let [once-fixture-fn (-> @registered-fixtures ns-sym :once join-fixtures)
+        each-fixture-fn (-> @registered-fixtures ns-sym :each join-fixtures)]
     (once-fixture-fn
      (fn []
        (doseq [fqn (get @registered-tests ns-sym)

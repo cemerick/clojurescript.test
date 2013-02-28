@@ -139,6 +139,8 @@ the future to support advanced compilation.
   is only bound to `cljs.core/*print-fn*` if it is bound to a non-nil value.
 * `run-tests` is now a macro; `run-tests*` does the same, but does not offer a
   no-arg arity
+* `use-fixtures` is now a macro, and there is no underlying multimethod to
+  extend as in `clojure.test`.
 
 ### Errors
 
@@ -154,7 +156,6 @@ properties of `Error`.
 
 ### Removed
 
-* All fixture facilities; perhaps to be reintroduced
 * `*load-tests*` is now private, and will probably be removed.  The use case
   for Clojure (which is rarely taken advantage of AFAICT) seems irrelevant for
 ClojureScript; if you do or don't want tests in production, you just change

@@ -32,9 +32,16 @@ Or, add this to your Maven project's `pom.xml`:
 
 ## Usage
 
-clojurescript.test provides roughly the same API as clojure.test, thus making
-writing portable tests possible.  e.g., here's a simple ClojureScript namespace
-that uses clojurescript.test:
+clojurescript.test provides roughly the same API as `clojure.test`, thus making
+writing portable tests possible.
+
+(Note that `clojurescript.test` doesn't take any
+responsibility for any hosty or otherwise-unportable
+things you do in your tests, e.g. `js/...` or naming JVM types or Clojure- or
+ClojureScript-only functions; either don't do that, or use something like cljx
+to include both Clojure and ClojureScript code in the same file.)
+
+Here's a simple ClojureScript namespace that uses clojurescript.test:
 
 ```clojure
 (ns cemerick.cljs.test.example
@@ -65,8 +72,8 @@ Testing cemerick.cljs.test.example
 {:fail 0, :pass 3, :test 3, :error 0}
 ```
 
-All of the test-definition macro (`deftest` and `with-test`, as well as the
-`set-test`) add to a global registry of available tests (necessary given
+All of the test-definition macros (`deftest` and `with-test`, as well as the
+`set-test` utility) add to a global registry of available tests (necessary given
 ClojureScript's lack of namespaces), so you can also define, redefine, and run
 tests interactively:
 

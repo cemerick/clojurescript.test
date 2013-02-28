@@ -455,7 +455,7 @@
   [name & body]
   (when *load-tests*
     `(do
-       (defn ~name [] (test-var ~name))
+       (defn ~name [] (test-var ~(munged-symbol *cljs-ns* "." name)))
        (set-test ~name ~@body))))
 
 (defmacro deftest-

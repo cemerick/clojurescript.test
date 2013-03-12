@@ -425,9 +425,9 @@
   (when *load-tests*
     `(do
        (set! ~name (vary-meta ~name assoc
-                     :name '~name
-                     :test (fn ~(symbol (str name "-test")) [] ~@body)))
-       (register-test! '~*cljs-ns* '~(munged-symbol *cljs-ns* "." name))
+                              :name '~name
+                              :test (fn ~(symbol (str name "-test")) [] ~@body)))
+       (register-test! '~*cljs-ns* ~(munged-symbol *cljs-ns* "." name))
        ~name)))
 
 (defmacro with-test
@@ -468,7 +468,7 @@
   [name & body]
   `(do
      (defn ~name ~@body)
-     (register-test-ns-hook! '~*cljs-ns* '~(munged-symbol *cljs-ns* "." name))
+     (register-test-ns-hook! '~*cljs-ns* ~(munged-symbol *cljs-ns* "." name))
      ~name))
 
 ;;; DEFINING FIXTURES

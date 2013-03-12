@@ -130,10 +130,6 @@ so only one such script will need to be maintained, etc).
 ## Limitations
 
 * Bug: filenames and line numbers are not currently reported properly.
-* **clojurescript.test will not work under Google Closure advanced
-  compilation.**  This is due to the runtime-dynamic way that tests are
-currently registered and looked up.  Some alternative approach may be taken in
-the future to support advanced compilation.
 
 ## Differences from `clojure.test`
 

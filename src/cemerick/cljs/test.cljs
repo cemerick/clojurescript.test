@@ -1,5 +1,6 @@
 (ns cemerick.cljs.test
-  (:require-macros [cemerick.cljs.test :refer (with-test-out)]))
+  (:require-macros [cemerick.cljs.test :refer (with-test-out)])
+  (:require [clojure.string :as str]))
 
 ;;; GLOBALS USED BY THE REPORTING FUNCTIONS
 
@@ -197,8 +198,7 @@
         each-fixture-fn (-> @registered-fixtures ns-sym :each join-fixtures)]
     (once-fixture-fn
      (fn []
-       (doseq [fqn (get @registered-tests ns-sym)
-               :let [v (js/eval (name fqn))]]
+       (doseq [v (get @registered-tests ns-sym)]
          (when (:test (meta v))
            (each-fixture-fn (fn [] (test-var v)))))))))
 
@@ -214,20 +214,19 @@
   [ns-sym]
   (binding [*report-counters* (atom *initial-report-counters*)]
     (do-report {:type :begin-test-ns, :ns ns-sym})
-    
     ;; If the namespace has a test-ns-hook function, call that:
-    (if-let [test-hook-name (get @registered-test-hooks ns-sym)]
-      ((js/eval (name test-hook-name)))
+    (if-let [test-hook (get @registered-test-hooks ns-sym)]
+      (test-hook)
       ;; Otherwise, just test every var in the namespace.
       (test-all-vars ns-sym))
-    
+
     (do-report {:type :end-test-ns, :ns ns-sym})
     @*report-counters*))
 
 
 ;;; RUNNING TESTS: HIGH-LEVEL FUNCTIONS
 
-(defn run-tests*
+(defn ^:export run-tests*
   "Runs all tests in the given namespaces; prints results.
   Defaults to current namespace if none given.  Returns a map
   summarizing test results."
@@ -238,7 +237,7 @@
     (do-report summary)
     summary))
 
-(defn run-all-tests
+(defn ^:export run-all-tests
   "Runs all tests in all namespaces; prints results.
   Optional argument is a regular expression; only namespaces with
   names matching the regular expression (with re-matches) will be
@@ -247,10 +246,13 @@
   ([] (apply run-tests* (keys @registered-tests)))
   ([re] (apply run-tests* (filter #(re-matches re (name %)) (keys @registered-tests)))))
 
-(defn successful?
+(defn ^:export successful?
   "Returns true if the given test summary indicates all tests
   were successful, false otherwise."
   {:added "1.1"}
   [summary]
   (and (zero? (:fail summary 0))
        (zero? (:error summary 0))))
+
+(defn ^:export set-print-fn! [f]
+  (set! cljs.core.*print-fn* f))

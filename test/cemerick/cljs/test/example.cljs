@@ -14,4 +14,8 @@
     {:pre [(integer? pennies)]}
     (str "$" (int (/ pennies 100)) "." (mod pennies 100)))
   (testing "assertions are nice"
-    (is (thrown-with-msg? js/Error #"integer?" (pennies->dollar-string 564.2)))))
+    (is (thrown? js/Error (pennies->dollar-string 564.2))))
+  (testing "assertions are nice"
+    (defn boom []
+      (throw (js/Error. "BOOM")))
+    (is (thrown-with-msg? js/Error #"BOOM" (boom)))))

@@ -119,7 +119,8 @@ phase is invoked (either via `lein cljsbuild test`, or just `lein test` because
 its hook is registered).  In this case, it's going to run the `phantomjs.js`
 script (which shebangs to `phantomjs`), which will load the output of our ClojureScript
 compilation, run all of the tests found therein, report on them, and fail the
-build if necessary.
+build if necessary.  Note that clojurescript.test supports all of Google Closure's
+compilation modes, including `:advanced`.
 
 Feel free to grab the `runners/phantomjs.js` script for your own projects (or, even
 better, figure out a way to easily package it with clojurescript.test itself,

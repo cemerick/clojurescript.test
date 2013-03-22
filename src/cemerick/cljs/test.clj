@@ -214,7 +214,7 @@
 "}
   cemerick.cljs.test
   (:require cljs.compiler
-            [cljs.analyzer :refer (*cljs-ns*)]
+            [cljs.analyzer :refer (*cljs-ns* get-expander)]
             [clojure.template :as temp]))
 
 ;; TODO seems like there's no reason to expose this for cljs; you're not
@@ -235,12 +235,20 @@
 
 ;;; UTILITIES FOR ASSERTIONS
 
+(def ^:private ^:dynamic *cljs-env*
+  "The current ClojureScript compilation environment, necessary
+to determine if a symbol refers to a macro (or not) when determining
+whether to use assert-predicate or not."
+  nil)
+
 (defn function?
   "Returns true if argument is a function or a symbol that resolves to
   a function (not a macro)."
   {:added "1.1"}
   [x]
-  (and (symbol? x) (not (.startsWith (name x) "."))))
+  (and (symbol? x)
+    (not (.startsWith (name x) "."))
+    (not (get-expander x *cljs-env*))))
 
 (defn assert-predicate
   "Returns generic assertion code for any functional predicate.  The
@@ -318,7 +326,7 @@
     `(try ~@body
           (do-report {:type :fail, :message ~msg,
                    :expected '~form, :actual nil})
-          (catch ~klass e#
+          (~'catch ~klass e#
             (do-report {:type :pass, :message ~msg,
                      :expected '~form, :actual e#})
             e#))))
@@ -333,7 +341,7 @@
         body (nthnext form 3)]
     `(try ~@body
           (do-report {:type :fail, :message ~msg, :expected '~form, :actual nil})
-          (catch ~klass e#
+          (~'catch ~klass e#
             (let [m# (.-message e#)]
               (if (re-find ~re m#)
                 (do-report {:type :pass, :message ~msg,
@@ -348,8 +356,9 @@
   You don't call this."
   {:added "1.1"}
   [msg form]
-  `(try ~(assert-expr msg form)
-        (catch js/Error t#
+  `(try ~(binding [*cljs-env* &env]
+           (assert-expr msg form))
+        (~'catch js/Error t#
           (do-report {:type :error, :message ~msg,
                       :expected '~form, :actual t#}))))
 

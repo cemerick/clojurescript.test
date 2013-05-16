@@ -1,4 +1,4 @@
-(defproject com.cemerick/clojurescript.test "0.0.4"
+(defproject com.cemerick/clojurescript.test "0.0.5-SNAPSHOT"
   :description "Port of clojure.test targeting ClojureScript."
   :url "http://github.com/cemerick/clojurescript.test"
   :license {:name "Eclipse Public License"

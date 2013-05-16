@@ -1,4 +1,4 @@
-(defproject com.cemerick/clojurescript.test "0.0.4-SNAPSHOT"
+(defproject com.cemerick/clojurescript.test "0.0.4"
   :description "Port of clojure.test targeting ClojureScript."
   :url "http://github.com/cemerick/clojurescript.test"
   :license {:name "Eclipse Public License"
@@ -27,7 +27,7 @@
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 
-  :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.0-RC17"]]}
+  :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}
              :dev {:dependencies [[com.cemerick/piggieback "0.0.4"]]}}
 
   :aliases  {"all" ["with-profile" "dev:dev,1.5"]}

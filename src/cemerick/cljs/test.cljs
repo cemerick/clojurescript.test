@@ -46,7 +46,7 @@
   [m]
   (let [{:keys [file line]} m]
     (str
-     (reverse *testing-vars*)
+     (pr-str (reverse *testing-vars*))
      " (" file ":" line ")")))
 
 (defn testing-contexts-str

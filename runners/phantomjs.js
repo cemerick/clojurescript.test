@@ -5,7 +5,9 @@
 
 var p = require('webpage').create();
 var sys = require('system');
-p.injectJs(sys.args[1]);
+for (var i = 1; i < sys.args.length; i++) {
+  p.injectJs(sys.args[i]);
+}
 
 p.onConsoleMessage = function (x) {
   var line = x;

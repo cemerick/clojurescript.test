@@ -1,5 +1,3 @@
-#!/usr/bin/env phantomjs
-
 // reusable phantomjs script for running clojurescript.test tests
 // see http://github.com/cemerick/clojurescript.test for more info
 

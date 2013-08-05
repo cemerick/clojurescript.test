@@ -7,7 +7,11 @@
   :dependencies [[org.clojure/clojure "1.4.0"]
                  [org.clojure/clojurescript "0.0-1586"]]
 
-  :plugins [[lein-cljsbuild "0.3.0"]]
+  :plugins [[lein-cljsbuild "0.3.0"]
+            ; self-reference and chained `lein install; lein test` invocation
+            ; needed to use the project as its own plugin. Leiningen :-(
+            [com.cemerick/clojurescript.test "0.0.5-SNAPSHOT"]]
+
   :hooks [leiningen.cljsbuild]
   :cljsbuild {:builds [{:source-paths ["src" "test"]
                         :compiler {:output-to "target/cljs/whitespace.js"
@@ -21,9 +25,10 @@
                         :compiler {:output-to "target/cljs/advanced.js"
                                    :optimizations :advanced
                                    :pretty-print true}}]
-              :test-commands {"phantom-whitespace" ["phantomjs" "resources/runner.js" "target/cljs/whitespace.js"]
-                              "phantom-simple" ["phantomjs" "resources/runner.js" "target/cljs/simple.js"]
-                              "phantom-advanced" ["phantomjs" "resources/runner.js" "target/cljs/advanced.js"]}}
+              :test-commands {"phantom-whitespace" ["phantomjs" :cljs.testrunner "target/cljs/whitespace.js"]
+                              "phantom-simple" ["phantomjs" :cljs.testrunner "target/cljs/simple.js"]
+                              "phantom-advanced" ["phantomjs" :cljs.testrunner "target/cljs/advanced.js"]}}
+
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 
   :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}

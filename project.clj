@@ -32,9 +32,9 @@
              :dev {:dependencies [[com.cemerick/piggieback "0.0.4"]]}
              ; self-reference and chained `lein install; lein test` invocation
              ; needed to use the project as its own plugin. Leiningen :-(
-             :self-plugin {:plugins [[com.cemerick/clojurescript.test "0.0.5-SNAPSHOT"]]}}
+             :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.0.5-SNAPSHOT"]]}]}
 
-  :aliases  {"all" ["with-profile" "dev,self-plugin:dev,self-plugin,1.5"]}
+  :aliases  {"all" ["with-profile" "self-plugin:self-plugin,1.5"]}
 
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
                         "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}

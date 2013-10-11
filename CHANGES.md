@@ -5,7 +5,9 @@
 * clojurescript.test now ships with its test runner script, and includes a
   Leiningen plugin that automatically unpacks it and updates your
   suitably-arranged lein-cljsbuild `:test-commands` vectors to refer to that
-  script. See the `README.md` for details.
+  script. See the `README.md` for details. (gh-11)
+* Fixed a bug where fixtures defined in namespaces containing dashes were never
+  applied (gh-17)
 
 ### `0.0.4`
 

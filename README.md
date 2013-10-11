@@ -7,18 +7,20 @@ A maximal port of `clojure.test` to ClojureScript.
 I want to be able to write portable tests to go along with my portable
 Clojure[Script], and `clojure.test`'s model is Good Enough™ (it's better than
 that, actually).  Combine with something like
-[cljx](https://github.com/lynaghk/cljx) or
-[lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild)'s crossovers to
-make your ClojureScripting a whole lot more pleasant.
+[cljx](https://github.com/lynaghk/cljx) to make your ClojureScripting a whole
+lot more pleasant.
 
 ## Installation
 
-clojurescript.test is available in Maven Central. Add this `:dependency` to
-your Leiningen `project.clj`:
+clojurescript.test is available in Maven Central. Add it to your **`:plugins`**
+in your Leiningen `project.clj`:
 
 ```clojure
 [com.cemerick/clojurescript.test "0.0.4"]
 ```
+
+(clojurescript.test is actually a project dependency _and_ a Leiningen plugin;
+adding it as the latter just helps simplify test configuration, as you see below.)
 
 Or, add this to your Maven project's `pom.xml`:
 
@@ -35,11 +37,11 @@ Or, add this to your Maven project's `pom.xml`:
 clojurescript.test provides roughly the same API as `clojure.test`, thus making
 writing portable tests possible.
 
-(Note that `clojurescript.test` doesn't take any
-responsibility for any hosty or otherwise-unportable
-things you do in your tests, e.g. `js/...` or naming JVM types or Clojure- or
-ClojureScript-only functions; either don't do that, or use something like cljx
-to include both Clojure and ClojureScript code in the same file.)
+(Note that `clojurescript.test` doesn't take any responsibility for any hosty or
+otherwise-unportable things you do in your tests, e.g. `js/...` or naming JVM
+types or Clojure- or ClojureScript-only functions; either don't do that, or use
+something like cljx to include both Clojure and ClojureScript code in the same
+file.)
 
 Here's a simple ClojureScript namespace that uses clojurescript.test:
 
@@ -96,7 +98,7 @@ expected: (empty? (filter even? (range 20)))
 
 Most people use [lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild) to
 automate their ClojureScript builds.  It also provides a test runner,
-originally intended for use with e.g.  [phantomjs](http://phantomjs.org/) to
+originally intended for use with e.g. [phantomjs](http://phantomjs.org/) to
 run tests that use existing JavaScript test frameworks.  However, you can
 easily use the same facility to run clojurescript.test tests.
 
@@ -104,27 +106,37 @@ This is the lein-cljsbuild configuration that this project uses to run its own
 clojurescript.test tests (look in the `project.clj` file for the full monty):
 
 ```clojure
-:plugins [[lein-cljsbuild "0.3.0"]]
+:plugins [[lein-cljsbuild "0.3.0"]
+          [com.cemerick/clojurescript.test "0.0.4"]]
 :hooks [leiningen.cljsbuild]
 :cljsbuild {:builds [{:source-paths ["src" "test"]
                       :compiler {:output-to "target/cljs/testable.js"
                                  :optimizations :whitespace
                                  :pretty-print true}}]
-            :test-commands {"unit-tests" ["runners/phantomjs.js" "target/cljs/testable.js"]}}
+            :test-commands {"unit-tests" ["phantomjs" :cljs.testrunner "target/cljs/testable.js"]}}
 ```
 
 Everything here is fairly basic, except for the `:test-commands` entries, which
 describes the shell command that will be executed when lein-cljsbuild's test
 phase is invoked (either via `lein cljsbuild test`, or just `lein test` because
-its hook is registered).  In this case, it's going to run the `phantomjs.js`
-script (which shebangs to `phantomjs`), which will load the output of our ClojureScript
-compilation, run all of the tests found therein, report on them, and fail the
-build if necessary.  Note that clojurescript.test supports all of Google Closure's
-compilation modes, including `:advanced`.
+its hook is registered).  In this case, it's going to run `phantomjs`, passing
+two arguments:
 
-Feel free to grab the `runners/phantomjs.js` script for your own projects (or, even
-better, figure out a way to easily package it with clojurescript.test itself,
-so only one such script will need to be maintained, etc).
+1. The path to the clojurescript.test test runner script (denoted by
+`:cljs.testrunner`, which I'll explain momentarily…), and
+2. The path to the ClojureScript compiler output (a lein-cljsbuild `:output-to`
+value defined elsewhere in the `project.clj`)
+
+clojurescript.test ships bundled with a test runner script (suitable for use
+with `phantomjs`, though there are rumors of it working nicely with `slimerjs`
+too).  As long as you add clojurescript.test to your `project.clj` as a
+`:plugin`, then it will replace any occurrences of `:cljs.testrunner` in your
+`:test-commands` vectors with the path to that test runner script.  
+
+That default test runner script loads the output of the ClojureScript
+compilation, run all of the tests found therein, reports on them, and fails the
+build if necessary.  Note that clojurescript.test supports all of Google
+Closure's compilation modes, including `:advanced`.
 
 **Wanted: runners for other JavaScript environments, e.g. Rhino, XUL, node, etc**
 

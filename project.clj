@@ -34,7 +34,8 @@
              ; needed to use the project as its own plugin. Leiningen :-(
              :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.0.5-SNAPSHOT"]]}]}
 
-  :aliases  {"all" ["with-profile" "self-plugin:self-plugin,1.5"]}
+  :aliases  {"all" ["with-profile" "self-plugin:self-plugin,1.5"]
+             "deploy" ["do" "deploy" "clojars," "deploy" "releases"]}
 
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
                         "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}

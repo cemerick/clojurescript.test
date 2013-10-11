@@ -487,7 +487,7 @@ whether to use assert-predicate or not."
   teardown. Using a fixture-type of :each wraps every test
   individually, while :once wraps the whole run in a single function."
   [fixture-type & args]
-  `(register-fixtures! '~(munged-symbol *cljs-ns*) ~fixture-type ~@args))
+  `(register-fixtures! '~*cljs-ns* ~fixture-type ~@args))
 
 ;;; RUNNING TESTS; (many more options available in test.cljs)
 

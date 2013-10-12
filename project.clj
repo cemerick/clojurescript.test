@@ -1,4 +1,4 @@
-(defproject com.cemerick/clojurescript.test "0.0.5-SNAPSHOT"
+(defproject com.cemerick/clojurescript.test "0.1.0"
   :description "Port of clojure.test targeting ClojureScript."
   :url "http://github.com/cemerick/clojurescript.test"
   :license {:name "Eclipse Public License"
@@ -37,7 +37,7 @@
 
   :aliases  {"cleantest" ["with-profile" "self-plugin:self-plugin,latest"
                           "do" "clean," "test"]
-             "deploy" ["do" "deploy" "clojars," "deploy" "releases"]}
+             "deploy" ["do" "clean," "deploy" "clojars," "deploy" "releases"]}
 
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
                         "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}

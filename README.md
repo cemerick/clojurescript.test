@@ -47,7 +47,8 @@ Here's a simple ClojureScript namespace that uses clojurescript.test:
 
 ```clojure
 (ns cemerick.cljs.test.example
-  (:require-macros [cemerick.cljs.test :refer (is deftest with-test run-tests testing)])
+  (:require-macros [cemerick.cljs.test
+                    :refer (is deftest with-test run-tests testing)])
   (:require [cemerick.cljs.test :as t]))
 
 (deftest somewhat-less-wat
@@ -92,6 +93,38 @@ FAIL in (dumb-test) (:0)
 expected: (empty? (filter even? (range 20)))
   actual: (not (empty? (0 2 4 6 8 10 12 14 16 18)))
 {:fail 1, :pass 3, :test 4, :error 0}
+```
+
+### Writing portable tests
+
+Because clojurescript.test has (approximately) the same API as `clojure.test`,
+writing portable tests with it is easy.  For example, the test namespace above
+can be made portable using cljx like so:
+
+```clojure
+(ns cemerick.cljs.test.example
+  #+clj (:require [clojure.test :as t
+                   :refer (is deftest with-test run-tests testing)])
+  #+cljs (:require-macros [cemerick.cljs.test
+                           :refer (is deftest with-test run-tests testing)])
+  #+cljs (:require [cemerick.cljs.test :as t]))
+
+#+cljs
+(deftest somewhat-less-wat
+  (is (= "{}[]" (+ {} []))))
+
+#+cljs
+(deftest javascript-allows-div0
+  (is (= js/Infinity (/ 1 0) (/ (int 1) (int 0)))))
+
+(with-test
+  (defn pennies->dollar-string
+    [pennies]
+    {:pre [(integer? pennies)]}
+    (str "$" (int (/ pennies 100)) "." (mod pennies 100)))
+  (testing "assertions are nice"
+    (is (thrown-with-msg? #+cljs js/Error #+clj Error #"integer?"
+          (pennies->dollar-string 564.2)))))
 ```
 
 ### Using with lein-cljsbuild

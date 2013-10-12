@@ -22,9 +22,9 @@
                         :compiler {:output-to "target/cljs/advanced.js"
                                    :optimizations :advanced
                                    :pretty-print true}}]
-              :test-commands {"phantom-whitespace" ["phantomjs" :cljs.testrunner "target/cljs/whitespace.js"]
-                              "phantom-simple" ["phantomjs" :cljs.testrunner "target/cljs/simple.js"]
-                              "phantom-advanced" ["phantomjs" :cljs.testrunner "target/cljs/advanced.js"]}}
+              :test-commands {"phantom-whitespace" ["phantomjs" :runner "target/cljs/whitespace.js"]
+                              "phantom-simple" ["phantomjs" :runner "target/cljs/simple.js"]
+                              "phantom-advanced" ["phantomjs" :runner "target/cljs/advanced.js"]}}
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 

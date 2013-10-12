@@ -113,7 +113,7 @@ clojurescript.test tests (look in the `project.clj` file for the full monty):
                       :compiler {:output-to "target/cljs/testable.js"
                                  :optimizations :whitespace
                                  :pretty-print true}}]
-            :test-commands {"unit-tests" ["phantomjs" :cljs.testrunner "target/cljs/testable.js"]}}
+            :test-commands {"unit-tests" ["phantomjs" :runner "target/cljs/testable.js"]}}
 ```
 
 Everything here is fairly basic, except for the `:test-commands` entries, which
@@ -123,14 +123,14 @@ its hook is registered).  In this case, it's going to run `phantomjs`, passing
 two arguments:
 
 1. The path to the clojurescript.test test runner script (denoted by
-`:cljs.testrunner`, which I'll explain momentarily…), and
+`:runner`, which I'll explain momentarily…), and
 2. The path to the ClojureScript compiler output (a lein-cljsbuild `:output-to`
 value defined elsewhere in the `project.clj`)
 
 clojurescript.test ships bundled with a test runner script (suitable for use
 with `phantomjs`, though there are rumors of it working nicely with `slimerjs`
 too).  As long as you add clojurescript.test to your `project.clj` as a
-`:plugin`, then it will replace any occurrences of `:cljs.testrunner` in your
+`:plugin`, then it will replace any occurrences of `:runner` in your
 `:test-commands` vectors with the path to that test runner script.  
 
 That default test runner script loads the output of the ClojureScript

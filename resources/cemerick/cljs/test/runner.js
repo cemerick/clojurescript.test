@@ -3,7 +3,10 @@
 
 var p = require('webpage').create();
 var sys = require('system');
-p.injectJs(sys.args[1]);
+if (!p.injectJs(sys.args[1])) {
+  phantom.exit(1);
+  throw new Error("Failed to inject " + sys.args[1]);
+}
 
 p.onConsoleMessage = function (x) {
   var line = x;

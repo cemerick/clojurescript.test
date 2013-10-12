@@ -28,13 +28,15 @@
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 
-  :profiles {:1.5 {:dependencies [[org.clojure/clojure "1.5.1"]]}
+  :profiles {:latest {:dependencies [[org.clojure/clojure "1.5.1"]
+                                     [org.clojure/clojurescript "0.0-1934"]]}
              :dev {:dependencies [[com.cemerick/piggieback "0.0.4"]]}
              ; self-reference and chained `lein install; lein test` invocation
              ; needed to use the project as its own plugin. Leiningen :-(
              :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.0.5-SNAPSHOT"]]}]}
 
-  :aliases  {"all" ["with-profile" "self-plugin:self-plugin,1.5"]
+  :aliases  {"cleantest" ["with-profile" "self-plugin:self-plugin,latest"
+                          "do" "clean," "test"]
              "deploy" ["do" "deploy" "clojars," "deploy" "releases"]}
 
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}

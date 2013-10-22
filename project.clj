@@ -4,8 +4,8 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
-  :dependencies [[org.clojure/clojure "1.4.0"]
-                 [org.clojure/clojurescript "0.0-1586"]]
+  :dependencies [[org.clojure/clojure "1.5.1"]
+                 [org.clojure/clojurescript "0.0-1934"]]
 
   :plugins [[lein-cljsbuild "0.3.4"]]
 
@@ -35,7 +35,7 @@
              ; needed to use the project as its own plugin. Leiningen :-(
              :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.2.0-SNAPSHOT"]]}]}
 
-  :aliases  {"cleantest" ["with-profile" "self-plugin:self-plugin,latest"
+  :aliases  {"cleantest" ["with-profile" "self-plugin" ;"self-plugin:self-plugin,latest"
                           "do" "clean," "test"]
              "deploy" ["do" "clean," "deploy" "clojars," "deploy" "releases"]}
 

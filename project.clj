@@ -37,7 +37,7 @@
 
   :aliases  {"cleantest" ["with-profile" "self-plugin" ;"self-plugin:self-plugin,latest"
                           "do" "clean," "test"]
-             "deploy" ["do" "clean," "deploy" "clojars," "deploy" "releases"]}
+             "release" ["do" "clean," "deploy" "clojars," "deploy" "releases"]}
 
   :deploy-repositories {"releases" {:url "https://oss.sonatype.org/service/local/staging/deploy/maven2/" :creds :gpg}
                         "snapshots" {:url "https://oss.sonatype.org/content/repositories/snapshots/" :creds :gpg}}

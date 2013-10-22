@@ -169,9 +169,13 @@
 
 ;;; RUNNING TESTS: LOW-LEVEL FUNCTIONS
 ;; TODO since there's no vars, rename these helpers to *-fn?
-(defn test-var
+(defn test-function
   "If v has a function in its :test metadata, calls that function,
-  with *testing-vars* bound to (conj *testing-vars* v)."
+  with *testing-vars* bound to (conj *testing-vars* v).
+
+  Note that this is the implementation of `test-var` in clojure.test,
+  which is a macro in clojurescript.test.  See `cemerick.cljs.test/test-var`
+  in the Clojure file for `test-var`."
   {:dynamic true, :added "1.1"}
   [v]
   (assert (fn? v) "test-var must be passed the function to be tested (not a symbol naming it)")
@@ -195,7 +199,7 @@
      (fn []
        (doseq [v (get @registered-tests ns-sym)]
          (when (:test (meta v))
-           (each-fixture-fn (fn [] (test-var v)))))))))
+           (each-fixture-fn (fn [] (test-function v)))))))))
 
 (defn test-ns
   "If the namespace defines a function named test-ns-hook, calls that.

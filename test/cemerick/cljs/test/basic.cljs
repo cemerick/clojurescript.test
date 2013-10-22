@@ -15,7 +15,7 @@
 ;; contributions and suggestions.
 
 (ns cemerick.cljs.test.basic
-  (:require-macros [cemerick.cljs.test :as m :refer (is deftest run-tests deftesthook)])
+  (:require-macros [cemerick.cljs.test :as m :refer (is test-var deftest run-tests deftesthook)])
   (:require [cemerick.cljs.test :as t]))
 
 (deftest can-test-symbol
@@ -106,4 +106,5 @@
 (deftesthook test-ns-hook []
   (binding [original-report t/report
             t/report custom-report]
-    (t/test-all-vars 'cemerick.cljs.test.basic)))
+    (t/test-all-vars 'cemerick.cljs.test.basic)
+    (test-var #'can-test-regexps)))

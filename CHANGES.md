@@ -1,5 +1,15 @@
 ## [clojurescript.test](http://github.com/cemerick/clojurescript.test) changelog
 
+### `0.2.0`
+
+**This release contains breaking changes.**
+
+* `test-var` is now a macro, which allows you to write code like `(test-var
+  #'name-of-test)`, even though ClojureScript doesn't support `#'` or the
+  `(var ...)` special form.  The function that was previously named `test-var`
+  retains its prior implementation, and is now (more appropriately) named
+  `test-function`.
+
 ### `0.1.0`
 
 * clojurescript.test now ships with its test runner script, and includes a

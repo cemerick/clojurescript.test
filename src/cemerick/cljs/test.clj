@@ -464,8 +464,25 @@ whether to use assert-predicate or not."
   [name & body]
   (when *load-tests*
     `(do
-       (defn ~name [] (test-var ~(munged-symbol *cljs-ns* "." name)))
+       (defn ~name [] (cemerick.cljs.test/test-var ~(munged-symbol *cljs-ns* "." name)))
        (set-test ~name ~@body))))
+
+(defmacro test-var
+  "Provides compatibility with the typical usage of clojure.test/test-var, e.g.
+`(test-var #'test-name)`.  This doesn't work in ClojureScript due to the lack of
+#' and the corresponding `var` special form.  This macro emits a cljs-clean reference
+to the named test fn, even if it's wrapped in a `(var ...)` form, so this:
+
+  (test-var #'test-name)
+
+emits
+
+  (cemerick.cljs.test/test-function test-name)"
+  [var-sym]
+  `(cemerick.cljs.test/test-function
+    ~(if (and (sequential? var-sym) (= 'var (first var-sym)))
+       (second var-sym)
+       var-sym)))
 
 (defmacro deftest-
   "Like deftest but creates a private var."

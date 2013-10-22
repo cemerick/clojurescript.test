@@ -48,7 +48,7 @@ Here's a simple ClojureScript namespace that uses clojurescript.test:
 ```clojure
 (ns cemerick.cljs.test.example
   (:require-macros [cemerick.cljs.test
-                    :refer (is deftest with-test run-tests testing)])
+                    :refer (is deftest with-test run-tests testing test-var)])
   (:require [cemerick.cljs.test :as t]))
 
 (deftest somewhat-less-wat
@@ -73,6 +73,9 @@ You can load this into a ClojureScript REPL, and run its tests using familiar fu
 
 Testing cemerick.cljs.test.example
 {:fail 0, :pass 3, :test 3, :error 0}
+
+=> (test-var #'cemerick.cljs.test.example/somewhat-less-wat)
+{:fail 0, :pass 1, :test 1, :error 0}
 ```
 
 All of the test-definition macros (`deftest` and `with-test`, as well as the
@@ -106,7 +109,7 @@ can be made portable using cljx like so:
   #+clj (:require [clojure.test :as t
                    :refer (is deftest with-test run-tests testing)])
   #+cljs (:require-macros [cemerick.cljs.test
-                           :refer (is deftest with-test run-tests testing)])
+                           :refer (is deftest with-test run-tests testing test-var)])
   #+cljs (:require [cemerick.cljs.test :as t]))
 
 #+cljs
@@ -126,6 +129,12 @@ can be made portable using cljx like so:
     (is (thrown-with-msg? #+cljs js/Error #+clj Error #"integer?"
           (pennies->dollar-string 564.2)))))
 ```
+
+Note that `test-var` is a macro in clojurescript.test; this allows you to
+portably write code like `(test-var #'name-of-test)`, even though ClojureScript
+doesn't support `#'` or the `(var ...)` special form.  `test-var` forms
+macroexpand to calls to `cemerick.cljs.test/test-function`, which is the
+corollary to clojure.test's `test-var`.
 
 ### Using with lein-cljsbuild
 

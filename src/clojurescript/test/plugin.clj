@@ -4,11 +4,12 @@
   (:import java.io.File))
 
 (def ^:private version
-  (let [[_ coords version] (-> (or (resource "META-INF/leiningen/com.cemerick/clojurescript.test/project.clj")
-                             ; this should only ever come into play when testing clojurescript.test itself
-                             "project.clj")
-                         slurp
-                         read-string)]
+  (let [[_ coords version]
+        (-> (or (resource "META-INF/leiningen/com.cemerick/clojurescript.test/project.clj")
+                ; this should only ever come into play when testing clojurescript.test itself
+                "project.clj")
+            slurp
+            read-string)]
     (assert (= coords 'com.cemerick/clojurescript.test)
             (str "Something very wrong, could not find clojurescript.test's project.clj, actually found: "
                  coords))

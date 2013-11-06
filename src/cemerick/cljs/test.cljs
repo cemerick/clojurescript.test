@@ -1,6 +1,7 @@
 (ns cemerick.cljs.test
   (:require-macros [cemerick.cljs.test :refer (with-test-out)])
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str])
+  (:refer-clojure :exclude (set-print-fn!)))
 
 ;;; GLOBALS USED BY THE REPORTING FUNCTIONS
 

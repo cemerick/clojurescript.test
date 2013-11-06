@@ -9,6 +9,8 @@
   `(var ...)` special form.  The function that was previously named `test-var`
   retains its prior implementation, and is now (more appropriately) named
   `test-function`.
+* Warnings regarding `set-print-fn!` have been squelched.  As a side effect,
+  clojurescript.test now requires ClojureScript >= `0.0-1798`.
 
 ### `0.1.0`
 

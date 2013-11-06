@@ -7,7 +7,7 @@
   :dependencies [[org.clojure/clojure "1.5.1"]
                  [org.clojure/clojurescript "0.0-1934"]]
 
-  :plugins [[lein-cljsbuild "0.3.4"]]
+  :plugins [[lein-cljsbuild "1.0.0-alpha1"]]
 
   :hooks [leiningen.cljsbuild]
   :cljsbuild {:builds [{:source-paths ["src" "test"]
@@ -30,7 +30,7 @@
 
   :profiles {:latest {:dependencies [[org.clojure/clojure "1.5.1"]
                                      [org.clojure/clojurescript "0.0-1934"]]}
-             :dev {:dependencies [[com.cemerick/piggieback "0.0.4"]]}
+             :dev {:plugins [[com.cemerick/austin "0.1.1"]]}
              ; self-reference and chained `lein install; lein test` invocation
              ; needed to use the project as its own plugin. Leiningen :-(
              :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.2.0-SNAPSHOT"]]}]}

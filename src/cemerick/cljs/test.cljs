@@ -252,6 +252,3 @@
   [summary]
   (and (zero? (:fail summary 0))
        (zero? (:error summary 0))))
-
-(defn ^:export set-print-fn! [f]
-  (set! cljs.core.*print-fn* f))

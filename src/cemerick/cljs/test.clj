@@ -425,17 +425,14 @@ whether to use assert-predicate or not."
   [& strs]
   (symbol (cljs.compiler/munge (apply str strs))))
 
-;; metadata on functions (esp top level fns?) in cljs is bizarre;
-;; the result of with-meta isn't a js/Function, but it is an IFn?
-;; TODO might be better to just define another top-level and register
-;; that instead
 (defmacro set-test
   [name & body]
   (when *load-tests*
     `(do
-       (set! ~name (vary-meta ~name assoc
-                              :name '~name
-                              :test (fn ~(symbol (str name "-test")) [] ~@body)))
+       (def ~(with-meta name {:declared true})
+             (vary-meta ~name assoc
+                        :name '~name
+                        :test (fn ~(symbol (str name "-test")) [] ~@body)))
        (register-test! '~*cljs-ns* ~(munged-symbol *cljs-ns* "." name))
        ~name)))
 

@@ -1,5 +1,10 @@
 ## [clojurescript.test](http://github.com/cemerick/clojurescript.test) changelog
 
+### `0.2.1`
+
+* The test runner now accepts multiple arbitrary JavaScript files and/or
+  expressions in your `lein-cljsbuild` `:test-command` vectors. (gh-8)
+
 ### `0.2.0`
 
 **This release contains breaking changes.**

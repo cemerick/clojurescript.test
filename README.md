@@ -155,19 +155,25 @@ clojurescript.test tests (look in the `project.clj` file for the full monty):
                       :compiler {:output-to "target/cljs/testable.js"
                                  :optimizations :whitespace
                                  :pretty-print true}}]
-            :test-commands {"unit-tests" ["phantomjs" :runner "target/cljs/testable.js"]}}
+            :test-commands {"unit-tests" ["phantomjs" :runner
+                                          "window.literal_js_was_evaluated=true"
+                                          "target/cljs/advanced.js"
+                                          "test/cemerick/cljs/test/extra_test_command_file.js"]}}
 ```
 
 Everything here is fairly basic, except for the `:test-commands` entries, which
 describes the shell command that will be executed when lein-cljsbuild's test
 phase is invoked (either via `lein cljsbuild test`, or just `lein test` because
 its hook is registered).  In this case, it's going to run `phantomjs`, passing
-two arguments:
+as arguments:
 
 1. The path to the clojurescript.test test runner script (denoted by
 `:runner`, which I'll explain momentarily…), and
-2. The path to the ClojureScript compiler output (a lein-cljsbuild `:output-to`
-value defined elsewhere in the `project.clj`)
+2. Either paths to ClojureScript compiler output (a lein-cljsbuild `:output-to`
+value defined elsewhere in the `project.clj`), _or_ paths to other arbitrary
+JavaScript files (useful for injecting external libraries, polyfills, etc), _or_
+arbitrary JavaScript expressions (useful for e.g. configuring runtime test
+properties).
 
 clojurescript.test ships bundled with a test runner script (suitable for use
 with `phantomjs`, though there are rumors of it working nicely with `slimerjs`

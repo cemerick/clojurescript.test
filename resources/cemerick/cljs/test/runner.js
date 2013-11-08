@@ -3,9 +3,9 @@
 
 var p = require('webpage').create();
 var sys = require('system');
-if (!p.injectJs(sys.args[1])) {
-  phantom.exit(1);
-  throw new Error("Failed to inject " + sys.args[1]);
+for (var i = 1; i < sys.args.length; i++) {
+  p.injectJs(sys.args[i]);
+  throw new Error("Failed to inject " + sys.args[i]);
 }
 
 p.onConsoleMessage = function (x) {

@@ -144,20 +144,20 @@ originally intended for use with e.g. [phantomjs](http://phantomjs.org/) to
 run tests that use existing JavaScript test frameworks.  However, you can
 easily use the same facility to run clojurescript.test tests.
 
-This is the lein-cljsbuild configuration that this project uses to run its own
-clojurescript.test tests (look in the `project.clj` file for the full monty):
+This is an excerpt of the lein-cljsbuild configuration that this project uses to
+run its own clojurescript.test tests (look in the `project.clj` file for the full
+monty):
 
 ```clojure
-:plugins [[lein-cljsbuild "0.3.0"]
-          [com.cemerick/clojurescript.test "0.2.0"]]
-:hooks [leiningen.cljsbuild]
+:plugins [[lein-cljsbuild "1.0.0-alpha1"]
+          [com.cemerick/clojurescript.test "0.2.1"]]
 :cljsbuild {:builds [{:source-paths ["src" "test"]
                       :compiler {:output-to "target/cljs/testable.js"
                                  :optimizations :whitespace
                                  :pretty-print true}}]
             :test-commands {"unit-tests" ["phantomjs" :runner
                                           "window.literal_js_was_evaluated=true"
-                                          "target/cljs/advanced.js"
+                                          "target/cljs/testable.js"
                                           "test/cemerick/cljs/test/extra_test_command_file.js"]}}
 ```
 

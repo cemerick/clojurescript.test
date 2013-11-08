@@ -2,10 +2,14 @@
 // see http://github.com/cemerick/clojurescript.test for more info
 
 var p = require('webpage').create();
+var fs = require('fs');
 var sys = require('system');
 for (var i = 1; i < sys.args.length; i++) {
-  p.injectJs(sys.args[i]);
-  throw new Error("Failed to inject " + sys.args[i]);
+    if (fs.exists(sys.args[i])) {
+        if (!p.injectJs(sys.args[i])) throw new Error("Failed to inject " + sys.args[i]);
+    } else {
+        p.evaluateJavaScript("(function () { " + sys.args[i] + ";" + " })");
+    }
 }
 
 p.onConsoleMessage = function (x) {

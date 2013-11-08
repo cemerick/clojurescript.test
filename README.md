@@ -16,7 +16,7 @@ clojurescript.test is available in Maven Central. Add it to your **`:plugins`**
 in your Leiningen `project.clj`:
 
 ```clojure
-[com.cemerick/clojurescript.test "0.2.0"]
+[com.cemerick/clojurescript.test "0.2.1"]
 ```
 
 (clojurescript.test is actually a project dependency _and_ a Leiningen plugin;
@@ -28,7 +28,7 @@ Or, add this to your Maven project's `pom.xml`:
 <dependency>
   <groupId>com.cemerick</groupId>
   <artifactId>clojurescript.test</artifactId>
-  <version>0.2.0</version>
+  <version>0.2.1</version>
 </dependency>
 ```
 

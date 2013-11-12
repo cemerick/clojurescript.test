@@ -48,7 +48,7 @@ Here's a simple ClojureScript namespace that uses clojurescript.test:
 ```clojure
 (ns cemerick.cljs.test.example
   (:require-macros [cemerick.cljs.test
-                    :refer (is deftest with-test run-tests testing test-var)])
+                    :refer [is deftest with-test run-tests testing test-var]])
   (:require [cemerick.cljs.test :as t]))
 
 (deftest somewhat-less-wat

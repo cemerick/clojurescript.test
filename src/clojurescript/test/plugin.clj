@@ -37,4 +37,5 @@ for string path to the packaged runner.js.
                    (fnil into [])
                    [['com.cemerick/clojurescript.test version]])
         (update-in [:cljsbuild :test-commands]
-                   #(postwalk-replace {:runner runner-path} %)))))
+                   #(postwalk-replace {:runner runner-path} %))
+        (#(postwalk-replace {:cljs.test/runner runner-path} %)))))

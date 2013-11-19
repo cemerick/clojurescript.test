@@ -13,7 +13,7 @@ for (var i = 1; i < sys.args.length; i++) {
 }
 
 p.onConsoleMessage = function (x) {
-  var line = x;
+  var line = x.toString();
   if (line !== "[NEWLINE]") {
     console.log(line.replace(/\[NEWLINE\]/g, "\n"));
   }

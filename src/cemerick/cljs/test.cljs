@@ -1,6 +1,9 @@
 (ns cemerick.cljs.test
-  (:require-macros [cemerick.cljs.test :refer (with-test-out)])
-  (:require [clojure.string :as str])
+  (:require-macros [cemerick.cljs.test :refer (with-test-out)]
+                   [cljs.core.async.macros :refer [go alt!]])
+  (:require [clojure.string :as str]
+            [cljs.core.async :as async :refer [chan]]
+            [cljs.core.async.impl.protocols :refer [Channel]])
   (:refer-clojure :exclude (set-print-fn!)))
 
 ;;; GLOBALS USED BY THE REPORTING FUNCTIONS
@@ -78,7 +81,7 @@
      :added "1.1"}
   report :type)
 
-(defn- file-and-line 
+(defn- file-and-line
   [error]
   {:file (.-fileName error) :line (.-lineNumber error)})
 
@@ -92,7 +95,7 @@
    (case
     (:type m)
     :fail (merge (file-and-line (js/Error)) m)
-    :error (merge (file-and-line (:actual m)) m) 
+    :error (merge (file-and-line (:actual m)) m)
     m)))
 
 (defmethod report :default [m]
@@ -184,11 +187,17 @@
     (binding [*testing-vars* (conj *testing-vars* (or (:name (meta v)) v))]
       (do-report {:type :begin-test-var, :var v})
       (inc-report-counter :test)
-      (try (t)
-           (catch js/Error e
-             (do-report {:type :error, :message "Uncaught exception, not in assertion."
-                      :expected nil, :actual e})))
-      (do-report {:type :end-test-var, :var v}))))
+      (let [result (try (t)
+                        (catch js/Error e
+                          (do-report {:type :error, :message "Uncaught exception, not in assertion."
+                                      :expected nil, :actual e})))]
+        (do-report {:type :end-test-var, :var v})
+        result))))
+
+(defn coerce-to-chan [x]
+  (if (satisfies? Channel x)
+    x
+    (go x)))
 
 (defn test-all-vars
   "Calls test-var on every var interned in the namespace, with fixtures."
@@ -198,9 +207,18 @@
         each-fixture-fn (-> @registered-fixtures ns-sym :each join-fixtures)]
     (once-fixture-fn
      (fn []
-       (doseq [v (get @registered-tests ns-sym)]
-         (when (:test (meta v))
-           (each-fixture-fn (fn [] (test-function v)))))))))
+       (async/reduce conj [] (async/merge (for [v (get @registered-tests ns-sym)]
+                                            (coerce-to-chan
+                                             (when (:test (meta v))
+                                               (each-fixture-fn (fn [] (test-function v))))))))))))
+
+(defn test-ns-with-report [ns-sym report]
+  (binding [*report-counters* report]
+    ;; If the namespace has a test-ns-hook function, call that:
+    (if-let [test-hook (get @registered-test-hooks ns-sym)]
+      (coerce-to-chan (test-hook))
+      ;; Otherwise, just test every var in the namespace.
+      (test-all-vars ns-sym))))
 
 (defn test-ns
   "If the namespace defines a function named test-ns-hook, calls that.
@@ -212,17 +230,12 @@
   *report-counters*."
   {:added "1.1"}
   [ns-sym]
-  (binding [*report-counters* (atom *initial-report-counters*)]
-    (do-report {:type :begin-test-ns, :ns ns-sym})
-    ;; If the namespace has a test-ns-hook function, call that:
-    (if-let [test-hook (get @registered-test-hooks ns-sym)]
-      (test-hook)
-      ;; Otherwise, just test every var in the namespace.
-      (test-all-vars ns-sym))
-
-    (do-report {:type :end-test-ns, :ns ns-sym})
-    @*report-counters*))
-
+  (go
+   (let [report (atom *initial-report-counters*)]
+     (do-report {:type :begin-test-ns, :ns ns-sym})
+     (<! (test-ns-with-report ns-sym report))
+     (do-report {:type :end-test-ns, :ns ns-sym})
+     @report)))
 
 ;;; RUNNING TESTS: HIGH-LEVEL FUNCTIONS
 
@@ -232,10 +245,12 @@
   summarizing test results."
   {:added "1.1"}
   [& namespaces]
-  (let [summary (assoc (apply merge-with + (map test-ns namespaces))
-                  :type :summary)]
-    (do-report summary)
-    summary))
+  (go
+   (let [results (<! (async/reduce conj [] (async/merge (map test-ns namespaces))))
+         summary (assoc (apply merge-with + results)
+                   :type :summary)]
+     (do-report summary)
+     summary)))
 
 (defn ^:export run-all-tests
   "Runs all tests in all namespaces; prints results.

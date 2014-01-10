@@ -238,13 +238,14 @@
     summary))
 
 (defn ^:export run-all-tests
-  "Runs all tests in all namespaces; prints results.
-  Optional argument is a regular expression; only namespaces with
-  names matching the regular expression (with re-matches) will be
-  tested."
+  "Runs all tests in all namespaces; prints results. 'on-finish' is a
+  callback that will be called when all tests are finished. Map with
+  test results will be passed to the callback. 're' is a regular
+  expression; only namespaces with names matching the regular
+  expression (with re-matches) will be tested."
   {:added "1.1"}
-  ([] (apply run-tests* (keys @registered-tests)))
-  ([re] (apply run-tests* (filter #(re-matches re (name %)) (keys @registered-tests)))))
+  ([on-finish] (on-finish (apply run-tests* (keys @registered-tests))))
+  ([on-finish re] (on-finish (apply run-tests* (filter #(re-matches re (name %)) (keys @registered-tests))))))
 
 (defn ^:export successful?
   "Returns true if the given test summary indicates all tests

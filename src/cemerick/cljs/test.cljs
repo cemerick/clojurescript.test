@@ -5,11 +5,11 @@
 
 ;;; GLOBALS USED BY THE REPORTING FUNCTIONS
 
-; bound to an atom of a map in test-ns
-(def ^:dynamic *report-counters* nil)
+; atom containin counters for namespace currently being tested
+(def report-counters (atom nil))
 
-; used to initialize *report-counters*
-(def ^:dynamic *initial-report-counters* {:test 0, :pass 0, :fail 0, :error 0})
+; used to initialize report-counters
+(def initial-report-counters {:test 0, :pass 0, :fail 0, :error 0})
 
 ; bound to hierarchy of "vars" (actually, symbols naming top-levels) being tested
 (def ^:dynamic *testing-vars* (list))
@@ -28,6 +28,14 @@
 (def registered-test-hooks (atom {}))
 ; atom mapping namespace symbols to collections of fixture HOFs
 (def registered-fixtures (atom {}))
+; atom with callback to be called when test finished
+(def on-finish-callback (atom nil))
+; atom with collection of namespaces that are in queue to be tested
+(def namespaces-left-to-test (atom []))
+; atom with collection of tests left to run for current namespace
+(def tests-left-to-test (atom []))
+; atom with locsk for async support
+(def locks (atom 0))
 
 (defn register-test!
   [ns name]
@@ -58,12 +66,10 @@
   (apply str (interpose " " (reverse *testing-contexts*))))
 
 (defn inc-report-counter
-  "Increments the named counter in *report-counters*, a ref to a map.
-  Does nothing if *report-counters* is nil."
+  "Increments the named counter in report-counters, a ref to a map."
   {:added "1.1"}
   [name]
-  (when *report-counters*
-    (swap! *report-counters* update-in [name] (fnil inc 0))))
+  (swap! report-counters update-in [name] (fnil inc 0)))
 
 ;;; TEST RESULT REPORTING
 
@@ -73,12 +79,12 @@
    'is' call 'report' to indicate results.  The argument given to
    'report' will be a map with a :type key.  See the documentation at
    the top of test_is.clj for more information on the types of
-   arguments for 'report'."
+n   arguments for 'report'."
      :dynamic true
      :added "1.1"}
   report :type)
 
-(defn- file-and-line 
+(defn- file-and-line
   [error]
   {:file (.-fileName error) :line (.-lineNumber error)})
 
@@ -207,21 +213,26 @@
   Otherwise, calls test-all-vars on the namespace.  'ns' is a
   namespace object or a symbol.
 
-  Internally binds *report-counters* to an atom initialized to
-  *inital-report-counters*.  Returns the final, dereferenced state of
-  *report-counters*."
+  Internally sets report-counters initialized to
+  inital-report-counters.  Returns the final, dereferenced state of
+  report-counters."
   {:added "1.1"}
   [ns-sym]
-  (binding [*report-counters* (atom *initial-report-counters*)]
-    (do-report {:type :begin-test-ns, :ns ns-sym})
-    ;; If the namespace has a test-ns-hook function, call that:
-    (if-let [test-hook (get @registered-test-hooks ns-sym)]
-      (test-hook)
-      ;; Otherwise, just test every var in the namespace.
-      (test-all-vars ns-sym))
+  (reset! report-counters initial-report-counters)
+  (do-report {:type :begin-test-ns, :ns ns-sym})
+  ;; If the namespace has a test-ns-hook function, call that:
+  (if-let [test-hook (get @registered-test-hooks ns-sym)]
+    (test-hook)
+    ;; Otherwise, just test every var in the namespace.
+    (test-all-vars ns-sym))
 
-    (do-report {:type :end-test-ns, :ns ns-sym})
-    @*report-counters*))
+  (do-report {:type :end-test-ns, :ns ns-sym})
+  @report-counters)
+
+(defn tests-finished [summary]
+  (do-report summary)
+  (when-let [on-finish @on-finish-callback]
+    (on-finish summary)))
 
 
 ;;; RUNNING TESTS: HIGH-LEVEL FUNCTIONS
@@ -231,11 +242,13 @@
   Defaults to current namespace if none given.  Returns a map
   summarizing test results."
   {:added "1.1"}
-  [& namespaces]
-  (let [summary (assoc (apply merge-with + (map test-ns namespaces))
-                  :type :summary)]
-    (do-report summary)
-    summary))
+  [on-finish & namespaces]
+  (reset! namespaces-left-to-test namespaces)
+  (reset! on-finish-callback on-finish)
+  (reset! locks 0)
+  (-> (apply merge-with + (map test-ns namespaces))
+      (assoc :type :summary)
+      (tests-finished)))
 
 (defn ^:export run-all-tests
   "Runs all tests in all namespaces; prints results. 'on-finish' is a
@@ -244,8 +257,8 @@
   expression; only namespaces with names matching the regular
   expression (with re-matches) will be tested."
   {:added "1.1"}
-  ([on-finish] (on-finish (apply run-tests* (keys @registered-tests))))
-  ([on-finish re] (on-finish (apply run-tests* (filter #(re-matches re (name %)) (keys @registered-tests))))))
+  ([on-finish] (apply run-tests* on-finish (keys @registered-tests)))
+  ([on-finish re] (apply run-tests* on-finish (filter #(re-matches re (name %)) (keys @registered-tests)))))
 
 (defn ^:export successful?
   "Returns true if the given test summary indicates all tests

@@ -5,11 +5,15 @@
 
 ;;; GLOBALS USED BY THE REPORTING FUNCTIONS
 
-; atom containin counters for namespace currently being tested
+; atom containing counters for namespace currently being tested
 (def report-counters (atom nil))
+
+(def all-ns-report-counters (atom nil))
 
 ; used to initialize report-counters
 (def initial-report-counters {:test 0, :pass 0, :fail 0, :error 0})
+
+(def ^:dynamic *in-sync?* false)
 
 ; bound to hierarchy of "vars" (actually, symbols naming top-levels) being tested
 (def ^:dynamic *testing-vars* (list))
@@ -30,12 +34,13 @@
 (def registered-fixtures (atom {}))
 ; atom with callback to be called when test finished
 (def on-finish-callback (atom nil))
-; atom with collection of namespaces that are in queue to be tested
-(def namespaces-left-to-test (atom []))
-; atom with collection of tests left to run for current namespace
-(def tests-left-to-test (atom []))
+; atom with queue of namespaces left to be tested
+(def namespaces-test-queue (atom []))
+; atom with queue of vars left to be tested in ns being tested
+(def vars-test-queue (atom []))
 ; atom with locsk for async support
 (def locks (atom 0))
+(def each-fixture-fn (atom nil))
 
 (defn register-test!
   [ns name]
@@ -44,6 +49,9 @@
 (defn register-test-ns-hook!
   [ns name]
   (swap! registered-test-hooks assoc ns name))
+
+(defn delay [fn]
+  (.setTimeout window fn 0))
 
 ;;; UTILITIES FOR REPORTING FUNCTIONS
 
@@ -196,17 +204,25 @@ n   arguments for 'report'."
                       :expected nil, :actual e})))
       (do-report {:type :end-test-var, :var v}))))
 
+(declare test-next-ns)
+(declare test-next-var)
+
+(defn test-next-var []
+  (if-let [v (first @vars-test-queue)]
+    (do (swap! vars-test-queue rest)
+        (when (:test (meta v))
+          (@each-fixture-fn (fn [] (test-function v))))
+        (recur))
+    (delay test-next-ns)))
+
 (defn test-all-vars
   "Calls test-var on every var interned in the namespace, with fixtures."
   {:added "1.1"}
   [ns-sym]
-  (let [once-fixture-fn (-> @registered-fixtures ns-sym :once join-fixtures)
-        each-fixture-fn (-> @registered-fixtures ns-sym :each join-fixtures)]
-    (once-fixture-fn
-     (fn []
-       (doseq [v (get @registered-tests ns-sym)]
-         (when (:test (meta v))
-           (each-fixture-fn (fn [] (test-function v)))))))))
+  (reset! each-fixture-fn (-> @registered-fixtures ns-sym :each join-fixtures))
+  (reset! vars-test-queue (get @registered-tests ns-sym))
+  (let [once-fixture-fn (-> @registered-fixtures ns-sym :once join-fixtures)]
+    (once-fixture-fn test-next-var)))
 
 (defn test-ns
   "If the namespace defines a function named test-ns-hook, calls that.
@@ -225,15 +241,21 @@ n   arguments for 'report'."
     (test-hook)
     ;; Otherwise, just test every var in the namespace.
     (test-all-vars ns-sym))
-
   (do-report {:type :end-test-ns, :ns ns-sym})
-  @report-counters)
+  (test-next-ns))
 
 (defn tests-finished [summary]
   (do-report summary)
   (when-let [on-finish @on-finish-callback]
     (on-finish summary)))
 
+(defn test-next-ns []
+  ; Add counters from previous ns test to global counters.
+  (swap! all-ns-report-counters #(merge-with + @report-counters %))
+  (if-let [ns-sym (first @namespaces-test-queue)]
+    (do (swap! namespaces-test-queue rest)
+        (test-ns ns-sym))
+    (tests-finished (assoc @all-ns-report-counters :type :summary))))
 
 ;;; RUNNING TESTS: HIGH-LEVEL FUNCTIONS
 
@@ -243,10 +265,13 @@ n   arguments for 'report'."
   summarizing test results."
   {:added "1.1"}
   [on-finish & namespaces]
-  (reset! namespaces-left-to-test namespaces)
+  (reset! namespaces-test-queue namespaces)
   (reset! on-finish-callback on-finish)
   (reset! locks 0)
-  (-> (apply merge-with + (map test-ns namespaces))
+  (reset! all-ns-report-counters initial-report-counters)
+  (reset! report-counters initial-report-counters)
+  (test-next-ns)
+#_  (-> (apply merge-with + (map test-ns namespaces))
       (assoc :type :summary)
       (tests-finished)))
 

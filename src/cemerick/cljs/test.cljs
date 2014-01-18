@@ -5,14 +5,16 @@
 
 ;;; GLOBALS USED BY THE REPORTING FUNCTIONS
 
-; bound to an atom of a map in test-ns
-(def ^:dynamic *report-counters* nil)
+; atom containing counters for namespace currently being tested
+(def report-counters (atom nil))
 
-; used to initialize *report-counters*
-(def ^:dynamic *initial-report-counters* {:test 0, :pass 0, :fail 0, :error 0})
+(def all-ns-report-counters (atom nil))
+
+; used to initialize report-counters
+(def initial-report-counters {:test 0, :pass 0, :fail 0, :error 0})
 
 ; bound to hierarchy of "vars" (actually, symbols naming top-levels) being tested
-(def ^:dynamic *testing-vars* (list))
+(def testing-vars (atom (list)))
 
 ; bound to hierarchy of "testing" strings
 (def ^:dynamic *testing-contexts* (list))
@@ -24,10 +26,43 @@
 ; could skip the atoms in this environment....
 ; atom mapping namespace symbols to sets of top-level test fns
 (def registered-tests (atom {}))
+
 ; atom mapping namespace symbols to top-level namespace-hook fns
 (def registered-test-hooks (atom {}))
+
 ; atom mapping namespace symbols to collections of fixture HOFs
 (def registered-fixtures (atom {}))
+
+; atom with callback to be called when test finished
+(def on-finish-callback (atom nil))
+
+; atom with queue of namespaces left to be tested
+(def namespaces-test-queue (atom []))
+
+; atom with queue of vars left to be tested in ns being tested
+(def vars-test-queue (atom []))
+
+; atom with locsk for async support
+(def locks (atom #{}))
+
+(def current-testing-function (atom nil))
+
+(def each-fixture-fn (atom nil))
+
+(let [id (atom 0)]
+  (defn generate-lock []
+    (swap! id inc)))
+
+(declare finish-var-testing)
+
+(defn acquire-lock []
+  (let [lock (generate-lock)]
+    (swap! locks conj lock)
+    lock))
+
+(defn release-lock [lock]
+  (swap! locks disj lock)
+  (finish-var-testing true))
 
 (defn register-test!
   [ns name]
@@ -37,17 +72,20 @@
   [ns name]
   (swap! registered-test-hooks assoc ns name))
 
+(defn delayed [fn]
+  (.setTimeout js/window fn 0))
+
 ;;; UTILITIES FOR REPORTING FUNCTIONS
 
 (defn testing-vars-str
   "Returns a string representation of the current test.  Renders names
-  in *testing-vars* as a list, then the source file and line of
+  in testing-vars as a list, then the source file and line of
   current assertion."
   {:added "1.1"}
   [m]
   (let [{:keys [file line]} m]
     (str
-     (pr-str (reverse *testing-vars*))
+     (pr-str (reverse @testing-vars))
      " (" file ":" line ")")))
 
 (defn testing-contexts-str
@@ -58,12 +96,10 @@
   (apply str (interpose " " (reverse *testing-contexts*))))
 
 (defn inc-report-counter
-  "Increments the named counter in *report-counters*, a ref to a map.
-  Does nothing if *report-counters* is nil."
+  "Increments the named counter in report-counters, a ref to a map."
   {:added "1.1"}
   [name]
-  (when *report-counters*
-    (swap! *report-counters* update-in [name] (fnil inc 0))))
+  (swap! report-counters update-in [name] (fnil inc 0)))
 
 ;;; TEST RESULT REPORTING
 
@@ -73,12 +109,12 @@
    'is' call 'report' to indicate results.  The argument given to
    'report' will be a map with a :type key.  See the documentation at
    the top of test_is.clj for more information on the types of
-   arguments for 'report'."
+n   arguments for 'report'."
      :dynamic true
      :added "1.1"}
   report :type)
 
-(defn- file-and-line 
+(defn- file-and-line
   [error]
   {:file (.-fileName error) :line (.-lineNumber error)})
 
@@ -92,7 +128,7 @@
    (case
     (:type m)
     :fail (merge (file-and-line (js/Error)) m)
-    :error (merge (file-and-line (:actual m)) m) 
+    :error (merge (file-and-line (:actual m)) m)
     m)))
 
 (defmethod report :default [m]
@@ -170,9 +206,20 @@
 
 ;;; RUNNING TESTS: LOW-LEVEL FUNCTIONS
 ;; TODO since there's no vars, rename these helpers to *-fn?
+
+(declare test-next-ns)
+(declare test-next-var)
+
+(defn finish-var-testing [run-next-if-can]
+  (when (empty? @locks)
+    (do-report {:type :end-test-var, :var @current-testing-function})
+    (swap! testing-vars rest)
+    (when run-next-if-can
+      (delayed test-next-var))))
+
 (defn test-function
   "If v has a function in its :test metadata, calls that function,
-  with *testing-vars* bound to (conj *testing-vars* v).
+  with testing-vars bound to (conj testing-vars v).
 
   Note that this is the implementation of `test-var` in clojure.test,
   which is a macro in clojurescript.test.  See `cemerick.cljs.test/test-var`
@@ -180,49 +227,66 @@
   {:dynamic true, :added "1.1"}
   [v]
   (assert (fn? v) "test-var must be passed the function to be tested (not a symbol naming it)")
+  (reset! current-testing-function v)
   (when-let [t (:test (meta v))]
-    (binding [*testing-vars* (conj *testing-vars* (or (:name (meta v)) v))]
-      (do-report {:type :begin-test-var, :var v})
-      (inc-report-counter :test)
-      (try (t)
-           (catch js/Error e
-             (do-report {:type :error, :message "Uncaught exception, not in assertion."
-                      :expected nil, :actual e})))
-      (do-report {:type :end-test-var, :var v}))))
+    (swap! testing-vars conj (or (:name (meta v)) v))
+    (do-report {:type :begin-test-var, :var v})
+    (inc-report-counter :test)
+    (try (t)
+         (catch js/Error e
+           (do-report {:type :error, :message "Uncaught exception, not in assertion."
+                       :expected nil, :actual e})))
+    (finish-var-testing false)))
+
+(defn test-next-var []
+  (if-let [v (first @vars-test-queue)]
+    (do (swap! vars-test-queue rest)
+        (when (:test (meta v))
+          (@each-fixture-fn (fn [] (test-function v))))
+        (when (empty? @locks)
+          (recur)))
+    (delayed test-next-ns)))
 
 (defn test-all-vars
   "Calls test-var on every var interned in the namespace, with fixtures."
   {:added "1.1"}
   [ns-sym]
-  (let [once-fixture-fn (-> @registered-fixtures ns-sym :once join-fixtures)
-        each-fixture-fn (-> @registered-fixtures ns-sym :each join-fixtures)]
-    (once-fixture-fn
-     (fn []
-       (doseq [v (get @registered-tests ns-sym)]
-         (when (:test (meta v))
-           (each-fixture-fn (fn [] (test-function v)))))))))
+  (reset! each-fixture-fn (-> @registered-fixtures ns-sym :each join-fixtures))
+  (reset! vars-test-queue (get @registered-tests ns-sym))
+  (let [once-fixture-fn (-> @registered-fixtures ns-sym :once join-fixtures)]
+    (once-fixture-fn test-next-var)))
 
 (defn test-ns
   "If the namespace defines a function named test-ns-hook, calls that.
   Otherwise, calls test-all-vars on the namespace.  'ns' is a
   namespace object or a symbol.
 
-  Internally binds *report-counters* to an atom initialized to
-  *inital-report-counters*.  Returns the final, dereferenced state of
-  *report-counters*."
+  Internally sets report-counters initialized to
+  inital-report-counters.  Returns the final, dereferenced state of
+  report-counters."
   {:added "1.1"}
   [ns-sym]
-  (binding [*report-counters* (atom *initial-report-counters*)]
-    (do-report {:type :begin-test-ns, :ns ns-sym})
-    ;; If the namespace has a test-ns-hook function, call that:
-    (if-let [test-hook (get @registered-test-hooks ns-sym)]
-      (test-hook)
-      ;; Otherwise, just test every var in the namespace.
-      (test-all-vars ns-sym))
+  (reset! report-counters initial-report-counters)
+  (do-report {:type :begin-test-ns, :ns ns-sym})
+  ;; If the namespace has a test-ns-hook function, call that:
+  (if-let [test-hook (get @registered-test-hooks ns-sym)]
+    (test-hook)
+    ;; Otherwise, just test every var in the namespace.
+    (test-all-vars ns-sym))
+  (do-report {:type :end-test-ns, :ns ns-sym}))
 
-    (do-report {:type :end-test-ns, :ns ns-sym})
-    @*report-counters*))
+(defn tests-finished [summary]
+  (do-report summary)
+  (when-let [on-finish @on-finish-callback]
+    (on-finish summary)))
 
+(defn test-next-ns []
+  ; Add counters from previous ns test to global counters.
+  (swap! all-ns-report-counters #(merge-with + @report-counters %))
+  (if-let [ns-sym (first @namespaces-test-queue)]
+    (do (swap! namespaces-test-queue rest)
+        (test-ns ns-sym))
+    (tests-finished (assoc @all-ns-report-counters :type :summary))))
 
 ;;; RUNNING TESTS: HIGH-LEVEL FUNCTIONS
 
@@ -231,20 +295,23 @@
   Defaults to current namespace if none given.  Returns a map
   summarizing test results."
   {:added "1.1"}
-  [& namespaces]
-  (let [summary (assoc (apply merge-with + (map test-ns namespaces))
-                  :type :summary)]
-    (do-report summary)
-    summary))
+  [on-finish & namespaces]
+  (reset! namespaces-test-queue namespaces)
+  (reset! on-finish-callback on-finish)
+  (reset! locks #{})
+  (reset! all-ns-report-counters initial-report-counters)
+  (reset! report-counters initial-report-counters)
+  (test-next-ns))
 
 (defn ^:export run-all-tests
-  "Runs all tests in all namespaces; prints results.
-  Optional argument is a regular expression; only namespaces with
-  names matching the regular expression (with re-matches) will be
-  tested."
+  "Runs all tests in all namespaces; prints results. 'on-finish' is a
+  callback that will be called when all tests are finished. Map with
+  test results will be passed to the callback. 're' is a regular
+  expression; only namespaces with names matching the regular
+  expression (with re-matches) will be tested."
   {:added "1.1"}
-  ([] (apply run-tests* (keys @registered-tests)))
-  ([re] (apply run-tests* (filter #(re-matches re (name %)) (keys @registered-tests)))))
+  ([on-finish] (apply run-tests* on-finish (keys @registered-tests)))
+  ([on-finish re] (apply run-tests* on-finish (filter #(re-matches re (name %)) (keys @registered-tests)))))
 
 (defn ^:export successful?
   "Returns true if the given test summary indicates all tests

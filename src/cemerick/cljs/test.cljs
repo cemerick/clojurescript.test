@@ -13,10 +13,8 @@
 ; used to initialize report-counters
 (def initial-report-counters {:test 0, :pass 0, :fail 0, :error 0})
 
-(def ^:dynamic *in-sync?* false)
-
 ; bound to hierarchy of "vars" (actually, symbols naming top-levels) being tested
-(def ^:dynamic *testing-vars* (list))
+(def testing-vars (atom (list)))
 
 ; bound to hierarchy of "testing" strings
 (def ^:dynamic *testing-contexts* (list))
@@ -28,19 +26,43 @@
 ; could skip the atoms in this environment....
 ; atom mapping namespace symbols to sets of top-level test fns
 (def registered-tests (atom {}))
+
 ; atom mapping namespace symbols to top-level namespace-hook fns
 (def registered-test-hooks (atom {}))
+
 ; atom mapping namespace symbols to collections of fixture HOFs
 (def registered-fixtures (atom {}))
+
 ; atom with callback to be called when test finished
 (def on-finish-callback (atom nil))
+
 ; atom with queue of namespaces left to be tested
 (def namespaces-test-queue (atom []))
+
 ; atom with queue of vars left to be tested in ns being tested
 (def vars-test-queue (atom []))
+
 ; atom with locsk for async support
-(def locks (atom 0))
+(def locks (atom #{}))
+
+(def current-testing-function (atom nil))
+
 (def each-fixture-fn (atom nil))
+
+(let [id (atom 0)]
+  (defn generate-lock []
+    (swap! id inc)))
+
+(declare finish-var-testing)
+
+(defn acquire-lock []
+  (let [lock (generate-lock)]
+    (swap! locks conj lock)
+    lock))
+
+(defn release-lock [lock]
+  (swap! locks disj lock)
+  (finish-var-testing true))
 
 (defn register-test!
   [ns name]
@@ -50,20 +72,20 @@
   [ns name]
   (swap! registered-test-hooks assoc ns name))
 
-(defn delay [fn]
-  (.setTimeout window fn 0))
+(defn delayed [fn]
+  (.setTimeout js/window fn 0))
 
 ;;; UTILITIES FOR REPORTING FUNCTIONS
 
 (defn testing-vars-str
   "Returns a string representation of the current test.  Renders names
-  in *testing-vars* as a list, then the source file and line of
+  in testing-vars as a list, then the source file and line of
   current assertion."
   {:added "1.1"}
   [m]
   (let [{:keys [file line]} m]
     (str
-     (pr-str (reverse *testing-vars*))
+     (pr-str (reverse @testing-vars))
      " (" file ":" line ")")))
 
 (defn testing-contexts-str
@@ -106,7 +128,7 @@ n   arguments for 'report'."
    (case
     (:type m)
     :fail (merge (file-and-line (js/Error)) m)
-    :error (merge (file-and-line (:actual m)) m) 
+    :error (merge (file-and-line (:actual m)) m)
     m)))
 
 (defmethod report :default [m]
@@ -184,9 +206,20 @@ n   arguments for 'report'."
 
 ;;; RUNNING TESTS: LOW-LEVEL FUNCTIONS
 ;; TODO since there's no vars, rename these helpers to *-fn?
+
+(declare test-next-ns)
+(declare test-next-var)
+
+(defn finish-var-testing [run-next-if-can]
+  (when (empty? @locks)
+    (do-report {:type :end-test-var, :var @current-testing-function})
+    (swap! testing-vars rest)
+    (when run-next-if-can
+      (delayed test-next-var))))
+
 (defn test-function
   "If v has a function in its :test metadata, calls that function,
-  with *testing-vars* bound to (conj *testing-vars* v).
+  with testing-vars bound to (conj testing-vars v).
 
   Note that this is the implementation of `test-var` in clojure.test,
   which is a macro in clojurescript.test.  See `cemerick.cljs.test/test-var`
@@ -194,26 +227,25 @@ n   arguments for 'report'."
   {:dynamic true, :added "1.1"}
   [v]
   (assert (fn? v) "test-var must be passed the function to be tested (not a symbol naming it)")
+  (reset! current-testing-function v)
   (when-let [t (:test (meta v))]
-    (binding [*testing-vars* (conj *testing-vars* (or (:name (meta v)) v))]
-      (do-report {:type :begin-test-var, :var v})
-      (inc-report-counter :test)
-      (try (t)
-           (catch js/Error e
-             (do-report {:type :error, :message "Uncaught exception, not in assertion."
-                      :expected nil, :actual e})))
-      (do-report {:type :end-test-var, :var v}))))
-
-(declare test-next-ns)
-(declare test-next-var)
+    (swap! testing-vars conj (or (:name (meta v)) v))
+    (do-report {:type :begin-test-var, :var v})
+    (inc-report-counter :test)
+    (try (t)
+         (catch js/Error e
+           (do-report {:type :error, :message "Uncaught exception, not in assertion."
+                       :expected nil, :actual e})))
+    (finish-var-testing false)))
 
 (defn test-next-var []
   (if-let [v (first @vars-test-queue)]
     (do (swap! vars-test-queue rest)
         (when (:test (meta v))
           (@each-fixture-fn (fn [] (test-function v))))
-        (recur))
-    (delay test-next-ns)))
+        (when (empty? @locks)
+          (recur)))
+    (delayed test-next-ns)))
 
 (defn test-all-vars
   "Calls test-var on every var interned in the namespace, with fixtures."
@@ -241,8 +273,7 @@ n   arguments for 'report'."
     (test-hook)
     ;; Otherwise, just test every var in the namespace.
     (test-all-vars ns-sym))
-  (do-report {:type :end-test-ns, :ns ns-sym})
-  (test-next-ns))
+  (do-report {:type :end-test-ns, :ns ns-sym}))
 
 (defn tests-finished [summary]
   (do-report summary)
@@ -267,13 +298,10 @@ n   arguments for 'report'."
   [on-finish & namespaces]
   (reset! namespaces-test-queue namespaces)
   (reset! on-finish-callback on-finish)
-  (reset! locks 0)
+  (reset! locks #{})
   (reset! all-ns-report-counters initial-report-counters)
   (reset! report-counters initial-report-counters)
-  (test-next-ns)
-#_  (-> (apply merge-with + (map test-ns namespaces))
-      (assoc :type :summary)
-      (tests-finished)))
+  (test-next-ns))
 
 (defn ^:export run-all-tests
   "Runs all tests in all namespaces; prints results. 'on-finish' is a

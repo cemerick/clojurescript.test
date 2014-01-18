@@ -21,10 +21,11 @@
                         :compiler {:output-to "target/cljs/advanced.js"
                                    :optimizations :advanced
                                    :pretty-print true}}]
-              :test-commands {"phantom-whitespace" ["phantomjs" :runner
-                                                    "window.literal_js_was_evaluated=true"
-                                                    "target/cljs/whitespace.js"
-                                                    "test/cemerick/cljs/test/extra_test_command_file.js"]
+              :test-commands {"phantom-whitespace"
+                              ["phantomjs" :runner
+                               "window.literal_js_was_evaluated=true"
+                               "target/cljs/whitespace.js"
+                               "test/cemerick/cljs/test/extra_test_command_file.js"]
                               "phantom-simple" ["phantomjs" :runner
                                                 "window.literal_js_was_evaluated=true"
                                                 "target/cljs/simple.js"
@@ -41,7 +42,8 @@
                       :plugins [[com.cemerick/austin "0.1.3"]]}
              ; self-reference and chained `lein install; lein test` invocation
              ; needed to use the project as its own plugin. Leiningen :-(
-             :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.2.2-SNAPSHOT"]]}]}
+             :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.2.2-SNAPSHOT"]]
+                                     :dependencies [[org.clojure/core.async "0.1.267.0-0d7780-alpha"]]}]}
 
   :aliases  {"cleantest" ["with-profile" "self-plugin:self-plugin,latest"
                           "do" "clean," "test," "cljsbuild" "test"]

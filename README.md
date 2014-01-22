@@ -139,17 +139,21 @@ corollary to clojure.test's `test-var`.
 ### Using with lein-cljsbuild
 
 Most people use [lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild) to
-automate their ClojureScript builds.  It also provides a test runner,
-originally intended for use with e.g. [phantomjs](http://phantomjs.org/) to
-run tests that use existing JavaScript test frameworks.  However, you can
-easily use the same facility to run clojurescript.test tests.
+automate their ClojureScript builds.  It also provides a test runner, originally
+intended for use with e.g. [phantomjs](http://phantomjs.org/) (though there are
+[rumors](https://github.com/cemerick/clojurescript.test/issues/10) that it works
+nicely with `slimerjs` as well) to run tests that use existing JavaScript test
+frameworks.  However, you can easily use the same facility to run
+clojurescript.test tests.
+
+**Wanted: runners for other JavaScript environments, e.g. Rhino, XUL, node, etc**
 
 This is an excerpt of the lein-cljsbuild configuration that this project uses to
 run its own clojurescript.test tests (look in the `project.clj` file for the full
 monty):
 
 ```clojure
-:plugins [[lein-cljsbuild "1.0.0-alpha1"]
+:plugins [[lein-cljsbuild "1.0.0"]
           [com.cemerick/clojurescript.test "0.2.1"]]
 :cljsbuild {:builds [{:source-paths ["src" "test"]
                       :compiler {:output-to "target/cljs/testable.js"
@@ -173,20 +177,50 @@ as arguments:
 value defined elsewhere in the `project.clj`), _or_ paths to other arbitrary
 JavaScript files (useful for injecting external libraries, polyfills, etc), _or_
 arbitrary JavaScript expressions (useful for e.g. configuring runtime test
-properties).
+properties...see the subsection below on using this capability, especially in
+conjunction with advanced compilation).
 
-clojurescript.test ships bundled with a test runner script (suitable for use
-with `phantomjs`, though there are rumors of it working nicely with `slimerjs`
-too).  As long as you add clojurescript.test to your `project.clj` as a
-`:plugin`, then it will replace any occurrences of `:runner` in your
-`:test-commands` vectors with the path to that test runner script.  
+clojurescript.test ships bundled with a test runner script.  As long as you add
+clojurescript.test to your `project.clj` as a `:plugin`, then it will replace
+any occurrences of `:runner` in your `:test-commands` vectors with the path to
+that test runner script.
 
 That default test runner script loads the output of the ClojureScript
 compilation, run all of the tests found therein, reports on them, and fails the
-build if necessary.  Note that clojurescript.test supports all of Google
-Closure's compilation modes, including `:advanced`.
+build if necessary.
 
-**Wanted: runners for other JavaScript environments, e.g. Rhino, XUL, node, etc**
+clojurescript.test supports all of Google Closure's compilation modes, including
+`:advanced`.
+
+#### Configuring tests via JavaScript files/expressions in `:test-commands`
+
+As noted above, you can have arbitrary JavaScript files and/or expressions
+loaded before or after your compiled ClojureScript.  One of the most useful
+aspects of this is that you can configure properties of your tests; for example,
+when using [double-check](https://github.com/cemerick/double-check), you can
+control the number of iterations checked by each `defspec` test by setting a
+Java system property.  While JavaScript doesn't have a corollary of system
+properties, you can add a JavaScript expression to your `:test-commands`
+vector(s) that sets a property on some globally-accessible object, e.g.:
+
+```clojure
+:test-commands {"rigorous" ["phantomjs" :runner
+                            "window.defspec_iters=10000000"
+                            "target/cljs/testable.js"]}
+```
+
+Then, in your ClojureScript test file(s), you can look up this dynamically-set
+value, using a default if it's not set:
+
+```clojure
+(def iteration-count (or (aget js/window "defspec_iters") 1000))
+```
+
+The use of `aget` and a string property lookup (as opposed to a simple
+`(.-defspec-iters js/window)` or `js/window.defspec_iters`) is necessary to
+ensure that the property name will not be renamed/obfuscated by Google Closure
+when run with `:advanced` optimizations.
+
 
 ## Limitations
 

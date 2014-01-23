@@ -22,7 +22,7 @@
 
 ;;; "Namespaces are one honking great idea -- let's do more of those!"
 ; could skip the atoms in this environment....
-; atom mapping namespace symbols to sets of top-level test fns
+; atom mapping namespace symbols to maps of "var" name => test function
 (def registered-tests (atom {}))
 ; atom mapping namespace symbols to top-level namespace-hook fns
 (def registered-test-hooks (atom {}))

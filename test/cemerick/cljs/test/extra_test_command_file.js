@@ -1,1 +1,1 @@
-window.file_was_evaluated = 42;
+this.file_was_evaluated = 42;

@@ -146,8 +146,6 @@ nicely with `slimerjs` as well) to run tests that use existing JavaScript test
 frameworks.  However, you can easily use the same facility to run
 clojurescript.test tests.
 
-**Wanted: runners for other JavaScript environments, e.g. Rhino, XUL, node, etc**
-
 This is an excerpt of the lein-cljsbuild configuration that this project uses to
 run its own clojurescript.test tests (look in the `project.clj` file for the full
 monty):
@@ -160,7 +158,7 @@ monty):
                                  :optimizations :whitespace
                                  :pretty-print true}}]
             :test-commands {"unit-tests" ["phantomjs" :runner
-                                          "window.literal_js_was_evaluated=true"
+                                          "this.literal_js_was_evaluated=true"
                                           "target/cljs/testable.js"
                                           "test/cemerick/cljs/test/extra_test_command_file.js"]}}
 ```
@@ -180,14 +178,27 @@ arbitrary JavaScript expressions (useful for e.g. configuring runtime test
 properties...see the subsection below on using this capability, especially in
 conjunction with advanced compilation).
 
-clojurescript.test ships bundled with a test runner script.  As long as you add
-clojurescript.test to your `project.clj` as a `:plugin`, then it will replace
-any occurrences of `:runner` in your `:test-commands` vectors with the path to
-that test runner script.
+To run your tests with node.js instead of `phantomjs`, just change the
+executable name and the `:runner` keyword in your `:test-commands` vectors like so:
 
-That default test runner script loads the output of the ClojureScript
-compilation, run all of the tests found therein, reports on them, and fails the
-build if necessary.
+```
+:test-commands {"unit-tests" ["node" :node-runner 
+                              ; extra code/files here...
+                             ]}
+```
+
+clojurescript.test bundles test runner scripts for various environments
+(currently, phantomjs and node.js).  As long as you add clojurescript.test to
+your `project.clj` as a `:plugin`, then it will replace any occurrences of
+`:runner` and `:node-runner` in your `:test-commands` vectors with the path to
+the corresponding test runner script.
+
+**Wanted: runners for other JavaScript environments, e.g. Rhino, XUL, the
+headed browsers of all sorts, etc**
+
+All test runner scripts load the output of the ClojureScript compilation, run
+all of the tests found therein, reports on them, and fails the build if
+necessary.
 
 clojurescript.test supports all of Google Closure's compilation modes, including
 `:advanced`.
@@ -205,7 +216,7 @@ vector(s) that sets a property on some globally-accessible object, e.g.:
 
 ```clojure
 :test-commands {"rigorous" ["phantomjs" :runner
-                            "window.defspec_iters=10000000"
+                            "this.defspec_iters=10000000"
                             "target/cljs/testable.js"]}
 ```
 
@@ -213,13 +224,15 @@ Then, in your ClojureScript test file(s), you can look up this dynamically-set
 value, using a default if it's not set:
 
 ```clojure
-(def iteration-count (or (aget js/window "defspec_iters") 1000))
+(def iteration-count (or (this-as this (aget this "defspec_iters")) 1000))
 ```
 
-The use of `aget` and a string property lookup (as opposed to a simple
-`(.-defspec-iters js/window)` or `js/window.defspec_iters`) is necessary to
+The use of `aget` and a string property lookup is necessary to
 ensure that the property name will not be renamed/obfuscated by Google Closure
-when run with `:advanced` optimizations.
+when run with `:advanced` optimizations.  Prior examples of this practice
+touched `window`, but that name is undefined in node.js; using `this` when
+setting and looking up the test configuration value makes it so that the same
+code (and configuration) can be used in any test environment.  
 
 
 ## Limitations

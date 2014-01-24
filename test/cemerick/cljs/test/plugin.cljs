@@ -8,9 +8,8 @@
 ;(def ^:export file-was-evaluated nil)
 
 (deftest literal-js-string-is-evaluated
-  ; eval needed to check proper pre-cljsbuild-output injection under advanced
   ; odd, the `true?` is needed here to avoid a gnarly js `this` error?
-  (is (true? (js/eval "window.literal_js_was_evaluated"))))
+  (is (true? (this-as this (aget this "literal_js_was_evaluated")))))
 
 (deftest extra-file-in-test-command-is-evaluated
-  (is (= 42 (aget js/window "file_was_evaluated"))))
+  (is (= 42 (this-as this (aget this "file_was_evaluated")))))

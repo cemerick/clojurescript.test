@@ -32,12 +32,16 @@
                               "phantom-advanced" ["phantomjs" :runner
                                                   "window.literal_js_was_evaluated=true"
                                                   "target/cljs/advanced.js"
-                                                  "test/cemerick/cljs/test/extra_test_command_file.js"]}}
+                                                  "test/cemerick/cljs/test/extra_test_command_file.js"]
+                              "node" ["node" :node-runner
+                                      "this.literal_js_was_evaluated=true"
+                                      "target/cljs/advanced.js"
+                                      "test/cemerick/cljs/test/extra_test_command_file.js"]}}
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 
   :profiles {:latest {:dependencies [[org.clojure/clojure "1.5.1"]
-                                     [org.clojure/clojurescript "0.0-2014"]]
+                                     [org.clojure/clojurescript "0.0-2138"]]
                       :plugins [[com.cemerick/austin "0.1.3"]]}
              ; self-reference and chained `lein install; lein test` invocation
              ; needed to use the project as its own plugin. Leiningen :-(

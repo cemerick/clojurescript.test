@@ -21,9 +21,11 @@
 (defn middleware
   "Does two things:
 
-1. Modify all :cljsbuild :test-command vectors, swapping :runner keyword
-for string path to the packaged runner.js.
-2. Add [com.cemerick/clojurescript-test \"CURRENT_VERSION\"] as a project dependency."
+1. Modify all :cljsbuild :test-command vectors, swapping :runner, :node-runner,
+  and :nodejs-runner keywords for the string path to the corresponding packaged
+  script.
+2. Add [com.cemerick/clojurescript-test \"CURRENT_VERSION\"] as a project
+  dependency."
   [project]
   (let [runner (File/createTempFile "test-runner" ".js")
         runner-path (.getAbsolutePath runner)
@@ -42,4 +44,5 @@ for string path to the packaged runner.js.
                    [['com.cemerick/clojurescript.test version]])
         (update-in [:cljsbuild :test-commands]
                    #(postwalk-replace {:runner runner-path
+                                       :nodejs-runner node-runner-path
                                        :node-runner node-runner-path} %)))))

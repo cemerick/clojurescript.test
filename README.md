@@ -187,6 +187,9 @@ executable name and the `:runner` keyword in your `:test-commands` vectors like 
                              ]}
 ```
 
+**Note that you must compile your ClojureScript code with
+`:optimizations :advanced` to run it on node.js.**
+
 clojurescript.test bundles test runner scripts for various environments
 (currently, phantomjs and node.js).  As long as you add clojurescript.test to
 your `project.clj` as a `:plugin`, then it will replace any occurrences of

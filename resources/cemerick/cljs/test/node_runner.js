@@ -21,7 +21,11 @@ args.forEach(function (arg) {
     }
 });
 
-cemerick.cljs.test.set_print_fn_BANG_(console.log);
+cemerick.cljs.test.set_print_fn_BANG_(function(x) {
+    // since console.log *itself* adds a newline 
+    var x = x.replace(/\n$/, "");
+    if (x.length > 0) console.log(x);
+});
 
 var success = (function() {
     var results = cemerick.cljs.test.run_all_tests();

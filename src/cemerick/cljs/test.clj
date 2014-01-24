@@ -428,14 +428,13 @@ whether to use assert-predicate or not."
 (defmacro set-test
   [name & body]
   (when *load-tests*
-    (let [test-name (munged-symbol *cljs-ns* "." name)]
-      `(do
-        (def ~(with-meta name {:declared true})
-          (vary-meta ~name assoc
-                     :name '~name
-                     :test (fn ~(symbol (str name "-test")) [] ~@body)))
-        (register-test! '~*cljs-ns* '~test-name ~test-name)
-        ~name))))
+    `(do
+       (def ~(with-meta name {:declared true})
+             (vary-meta ~name assoc
+                        :name '~name
+                        :test (fn ~(symbol (str name "-test")) [] ~@body)))
+       (register-test! '~*cljs-ns* ~(munged-symbol *cljs-ns* "." name))
+       ~name)))
 
 (defmacro with-test
   "Takes any definition form (that returns a Var) as the first argument.

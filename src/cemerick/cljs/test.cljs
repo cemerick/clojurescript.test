@@ -30,8 +30,8 @@
 (def registered-fixtures (atom {}))
 
 (defn register-test!
-  [ns name fn]
-  (swap! registered-tests update-in [ns] assoc name fn))
+  [ns name]
+  (swap! registered-tests update-in [ns] (fnil conj #{}) name))
 
 (defn register-test-ns-hook!
   [ns name]
@@ -198,7 +198,7 @@
         each-fixture-fn (-> @registered-fixtures ns-sym :each join-fixtures)]
     (once-fixture-fn
      (fn []
-       (doseq [v (vals (get @registered-tests ns-sym))]
+       (doseq [v (get @registered-tests ns-sym)]
          (when (:test (meta v))
            (each-fixture-fn (fn [] (test-function v)))))))))
 

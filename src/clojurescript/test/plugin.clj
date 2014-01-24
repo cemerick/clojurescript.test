@@ -26,15 +26,20 @@ for string path to the packaged runner.js.
 2. Add [com.cemerick/clojurescript-test \"CURRENT_VERSION\"] as a project dependency."
   [project]
   (let [runner (File/createTempFile "test-runner" ".js")
-        runner-path (.getAbsolutePath runner)]
+        runner-path (.getAbsolutePath runner)
+        node-runner (File/createTempFile "test-node-runner" ".js")
+        node-runner-path (.getAbsolutePath node-runner)]
     (.deleteOnExit runner)
+    (.deleteOnExit node-runner)
     ; if we end up packaging multiple runner scripts, there's a (weak)
     ; correspondence set up between the keywords being replaced and the resource
     ; path...
     (copy (slurp (resource "cemerick/cljs/test/runner.js")) runner)
+    (copy (slurp (resource "cemerick/cljs/test/node_runner.js")) node-runner)
     (-> project
         (update-in [:dependencies]
                    (fnil into [])
                    [['com.cemerick/clojurescript.test version]])
         (update-in [:cljsbuild :test-commands]
-                   #(postwalk-replace {:runner runner-path} %)))))
+                   #(postwalk-replace {:runner runner-path
+                                       :node-runner node-runner-path} %)))))

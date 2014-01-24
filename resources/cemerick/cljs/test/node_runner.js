@@ -6,7 +6,9 @@ args.forEach(function (arg) {
     var file = path.join(process.cwd(), arg);
     if (fs.existsSync(file)) {
       try {
-        require(file);
+        // using eval instead of require here so that `this` is the "real"
+        // top-level scope, not the module
+        eval("(function () {" + fs.readFileSync(file, {encoding: "UTF-8"}) + "})()");
       } catch (e) {
         console.log("Error in file: \"" + file + "\"");
         console.log(e);

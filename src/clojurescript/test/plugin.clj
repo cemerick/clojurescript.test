@@ -18,6 +18,20 @@
                  version))
     version))
 
+(defn runner-path! [[runner resource-file]]
+  "Creates a temp file for the given runner resource file"
+  (let [runner-path (.getAbsolutePath
+                     (doto (File/createTempFile (name runner) ".js")
+                       (.deleteOnExit)
+                       (#(copy (slurp (resource resource-file)) %))))]
+
+    [runner runner-path]))
+
+(defn runner-paths! [runners]
+  "Creates temp files for the given runners, returning a hash map
+associating the runner keyword with the corresponding temp file"
+  (into {} (map runner-path! runners)))
+
 (defn middleware
   "Does two things:
 
@@ -27,22 +41,13 @@
 2. Add [com.cemerick/clojurescript-test \"CURRENT_VERSION\"] as a project
   dependency."
   [project]
-  (let [runner (File/createTempFile "test-runner" ".js")
-        runner-path (.getAbsolutePath runner)
-        node-runner (File/createTempFile "test-node-runner" ".js")
-        node-runner-path (.getAbsolutePath node-runner)]
-    (.deleteOnExit runner)
-    (.deleteOnExit node-runner)
-    ; if we end up packaging multiple runner scripts, there's a (weak)
-    ; correspondence set up between the keywords being replaced and the resource
-    ; path...
-    (copy (slurp (resource "cemerick/cljs/test/runner.js")) runner)
-    (copy (slurp (resource "cemerick/cljs/test/node_runner.js")) node-runner)
+  (let [runners [[:runner "cemerick/cljs/test/runner.js"]
+                 [:node-runner "cemerick/cljs/test/node_runner.js"]
+                 [:nodejs-runner "cemerick/cljs/test/node_runner.js"]]
+        runner-paths (runner-paths! runners)]
     (-> project
         (update-in [:dependencies]
                    (fnil into [])
                    [['com.cemerick/clojurescript.test version]])
         (update-in [:cljsbuild :test-commands]
-                   #(postwalk-replace {:runner runner-path
-                                       :nodejs-runner node-runner-path
-                                       :node-runner node-runner-path} %)))))
+                   #(postwalk-replace runner-paths %)))))

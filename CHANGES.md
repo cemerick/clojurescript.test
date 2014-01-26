@@ -1,5 +1,11 @@
 ## [clojurescript.test](http://github.com/cemerick/clojurescript.test) changelog
 
+### [`0.2.2`](https://github.com/cemerick/clojurescript.test/issues?milestone=4&page=1&state=closed)
+
+* clojurescript.test now supports node.js via a new test runner (`:node-runner`
+  instead of `:runner` in your project config, see the README for details)
+  (gh-38, gh-40)
+
 ### `0.2.1`
 
 * The test runner now accepts multiple arbitrary JavaScript files and/or

@@ -1,27 +1,39 @@
 (ns cemerick.cljs.test
-  (:require-macros [cemerick.cljs.test :refer (with-test-out)])
+  (:require-macros [cemerick.cljs.test :refer (with-test-out test-runner-entry-point)])
   (:require [clojure.string :as str])
   (:refer-clojure :exclude (set-print-fn!)))
 
-;;; GLOBALS USED BY THE REPORTING FUNCTIONS
-
-; bound to an atom of a map in test-ns
-(def ^:dynamic *report-counters* nil)
-
-; used to initialize *report-counters*
-(def ^:dynamic *initial-report-counters* {:test 0, :pass 0, :fail 0, :error 0})
-
-; bound to hierarchy of "vars" (actually, symbols naming top-levels) being tested
-(def ^:dynamic *testing-vars* (list))
-
-; bound to hierarchy of "testing" strings
-(def ^:dynamic *testing-contexts* (list))
-
-; *print-fn* for emitting test output
+; *print-fn* for emitting test output; captured by `init-test-environment`
 (def ^:dynamic *test-print-fn* nil)
 
+; when true, indicates that a particular test-running function is the user's
+; entry point
+(def ^:dynamic ^:private *entry-point* true)
+
+;; The globals that clojure.test uses for reporting functions are folded in the
+;; "test environment" that is explicitly passed around
+
+(defn- init-test-environment*
+  [aux-data]
+  (atom (-> {:test 0, :pass 0, :fail 0, :error 0}
+            (merge (when *test-print-fn* {::test-print-fn *test-print-fn*}))
+            ; corresponds to *testing-contexts* in clojure.test:
+            ; a hierarchy of "testing" strings
+            (assoc ::test-contexts ())
+            (merge aux-data))))
+
+(defn- init-test-environment
+  []
+  (doto (init-test-environment*
+         {; corresponds to *testing-vars* in clojure.test: 
+          ; a hierarchy of "vars" (actually, symbols naming top-levels) being tested
+          ; not used w/ async test lifecycle at all
+          ; TODO does the pervasive availability of test-name make this irrelevant?
+          ; it's a stack, but I don't grok/remember the use case for it
+          ::test-functions ()})
+    (swap! assoc :async (init-test-environment* {}))))
+
 ;;; "Namespaces are one honking great idea -- let's do more of those!"
-; could skip the atoms in this environment....
 ; atom mapping namespace symbols to maps of "var" name => test function
 (def registered-tests (atom {}))
 ; atom mapping namespace symbols to top-level namespace-hook fns
@@ -39,31 +51,68 @@
 
 ;;; UTILITIES FOR REPORTING FUNCTIONS
 
+(defn- maybe-deref
+  [x]
+  (if (satisfies? cljs.core/IDeref x) @x x))
+
+(defn testing-complete?
+  [test-env]
+  (let [{remaining ::remaining
+         running ::running
+         async :async} (maybe-deref test-env)]
+    (and (empty? remaining)
+         (empty? running)
+         (or (nil? async)
+             (testing-complete? async)))))
+
+; exported for test runners
+(defn ^:export on-async-progress
+  "Registers a watcher on the :async testing (sub)environment provided by
+[test-env]; when its key metrics (:test, :pass, :fail, :error) change,
+[callback] will be called with [test-env].  The watcher will be removed when all
+tests are complete."
+  [test-env callback]
+  (add-watch (:async (maybe-deref test-env))
+             (gensym "on-progress")
+             (fn [key ref old new]
+               (let [[oldv newv] (map #(select-keys % [:test :pass :fail :error]) [old new])
+                     complete? (testing-complete? new)]
+                 (when (or complete? (not= oldv newv))
+                   (callback (maybe-deref test-env)))
+                 (when complete? (remove-watch ref key)))))
+  test-env)
+
+(defn ^:export on-testing-complete
+  "Same as `on-async-progress`, but will only call [callback] when all tests are complete."
+  [test-env callback]
+  (on-async-progress test-env (fn [test-env]
+                                (when (testing-complete? test-env)
+                                  (callback test-env)))))
+
 (defn testing-vars-str
   "Returns a string representation of the current test.  Renders names
-  in *testing-vars* as a list, then the source file and line of
+  in the test environment's ::test-functions list, then the source file and line of
   current assertion."
   {:added "1.1"}
-  [m]
-  (let [{:keys [file line]} m]
-    (str
-     (pr-str (reverse *testing-vars*))
-     " (" file ":" line ")")))
+  [{:keys [file line test-env test-name] :as m}]
+  (str
+   (pr-str (or (seq (reverse (::test-functions @test-env)))
+               (list test-name)))
+   " (" file ":" line ")"))
 
 (defn testing-contexts-str
-  "Returns a string representation of the current test context. Joins
-  strings in *testing-contexts* with spaces."
+  "Returns a string representation of the current test context as represented in
+  the [test-env]'s ::test-contexts list. Joins strings in that list with
+  spaces."
   {:added "1.1"}
-  []
-  (apply str (interpose " " (reverse *testing-contexts*))))
+  [test-env]
+  (apply str (interpose " " (reverse (::test-contexts @test-env)))))
 
 (defn inc-report-counter
-  "Increments the named counter in *report-counters*, a ref to a map.
-  Does nothing if *report-counters* is nil."
+  "Increments the named counter in the [test-env] atom."
   {:added "1.1"}
-  [name]
-  (when *report-counters*
-    (swap! *report-counters* update-in [name] (fnil inc 0))))
+  [test-env name]
+  (swap! test-env update-in [name] (fnil inc 0)))
 
 ;;; TEST RESULT REPORTING
 
@@ -78,6 +127,7 @@
      :added "1.1"}
   report :type)
 
+; TODO this just doesn't work, at least not on the REPL
 (defn- file-and-line 
   [error]
   {:file (.-fileName error) :line (.-lineNumber error)})
@@ -87,34 +137,36 @@
    If you are writing a custom assert-expr method, call this function
    to pass test results to report."
   {:added "1.2"}
-  [m]
-  (report
-   (case
-    (:type m)
-    :fail (merge (file-and-line (js/Error)) m)
-    :error (merge (file-and-line (:actual m)) m) 
-    m)))
+  ([{test-env :state test-name :test-name} m]
+     (do-report (assoc m :test-env test-env :test-name test-name)))
+  ([m]
+     (report (case (:type m)
+               :fail (merge (file-and-line (js/Error)) m)
+               :error (merge (file-and-line (:actual m)) m) 
+               m))))
 
-(defmethod report :default [m]
-  (with-test-out (prn m)))
+(defmethod report :default [{:keys [test-env] :as m}]
+  (with-test-out test-env (prn m)))
 
-(defmethod report :pass [m]
-  (with-test-out (inc-report-counter :pass)))
+(defmethod report :pass [{:keys [test-env] :as m}]
+  (with-test-out test-env (inc-report-counter test-env :pass)))
 
-(defmethod report :fail [m]
-  (with-test-out
-    (inc-report-counter :fail)
+(defmethod report :fail [{:keys [test-env] :as m}]
+  (with-test-out test-env
+    (inc-report-counter test-env :fail)
     (println "\nFAIL in" (testing-vars-str m))
-    (when (seq *testing-contexts*) (println (testing-contexts-str)))
+    (when (seq (::test-contexts @test-env))
+      (println (testing-contexts-str test-env)))
     (when-let [message (:message m)] (println message))
     (println "expected:" (pr-str (:expected m)))
     (println "  actual:" (pr-str (:actual m)))))
 
-(defmethod report :error [m]
-  (with-test-out
-   (inc-report-counter :error)
+(defmethod report :error [{:keys [test-env] :as m}]
+  (with-test-out test-env
+   (inc-report-counter test-env :error)
    (println "\nERROR in" (testing-vars-str m))
-   (when (seq *testing-contexts*) (println (testing-contexts-str)))
+   (when (seq (::test-contexts @test-env))
+      (println (testing-contexts-str test-env)))
    (when-let [message (:message m)] (println message))
    (println "expected:" (pr-str (:expected m)))
    (print "  actual: ")
@@ -123,20 +175,39 @@
        (println (.-stack actual))
        (prn actual)))))
 
-(defmethod report :summary [m]
-  (with-test-out
-   (println "\nRan" (:test m) "tests containing"
-            (+ (:pass m) (:fail m) (:error m)) "assertions.")
-   (println (:fail m) "failures," (:error m) "errors.")))
+(defmethod report :multiple-async-done [{:keys [test-env] :as m}]
+  (with-test-out test-env
+    (inc-report-counter test-env :multiple-async-done)
+    (println "\nWARNING in" (testing-vars-str m))
+   (when (seq (::test-contexts @test-env))
+      (println (testing-contexts-str test-env)))
+   (when-let [message (:message m)] (println message))))
 
-(defmethod report :begin-test-ns [m]
-  (with-test-out
-   (println "\nTesting" (:ns m))))
+(defmethod report :summary [{:keys [test pass fail error] :as test-env}]
+  (with-test-out test-env
+   (println "\nRan" test "tests containing"
+            (+ pass fail error) "assertions.")
+   (if-let [^number pending-count
+            (and (not (testing-complete? test-env))
+                 (->> @(:async  test-env)
+                      ((juxt ::remaining ::running))
+                      (map count)
+                      (apply +)))]
+     (println "Waiting on" pending-count
+              (str "asynchronous test"
+                   (when (> pending-count 1) "s")
+                   " to complete."))
+     (println "Testing complete:" fail "failures," error "errors."))))
+
+(defmethod report :begin-test-ns [{:keys [ns test-env async] :as m}]
+  (with-test-out test-env
+   (println "\nTesting" ns (if async "(async)" ""))))
 
 ;; Ignore these message types:
-(defmethod report :end-test-ns [m])
-(defmethod report :begin-test-var [m])
-(defmethod report :end-test-var [m])
+(defmethod report :end-test-ns [{:keys [test-env] :as m}])
+(defmethod report :begin-test-var [{:keys [test-env] :as m}])
+(defmethod report :end-test-var [{:keys [test-env] :as m}])
+
 
 
 ;;; REGISTERING FIXTURES
@@ -168,39 +239,158 @@
   [fixtures]
   (reduce compose-fixtures default-fixture fixtures))
 
+;;; SUPPORTING ASYNC
+
+(defn- async-test?
+  [test-fn]
+  (boolean (:async (meta test-fn))))
+
+(defn- test-async-fn
+  [async-test-env test-name test-fn]
+  (do-report {:type :begin-test-var, :var test-fn
+              :test-env async-test-env :test-name test-name})
+  (inc-report-counter async-test-env :test)
+  (test-fn {:state async-test-env :test-name test-name}))
+
+(defn- start-next-async-test
+  [async-test-env]
+  (let [next-test (atom (fn []))]
+    (swap! async-test-env
+           (fn [env]
+             (if-let [[name testfn] (and (not (:stop env))
+                                         (first (::remaining env)))]
+               ; let the test env change before starting the test
+               (do (reset! next-test testfn)
+                   (let [ns (namespace name)]
+                     (when-not (contains? (:namespaces (meta async-test-env)) ns)
+                       (do-report {:type :begin-test-ns, :ns ns
+                                   :test-env async-test-env :async true})
+                       (alter-meta! async-test-env update-in [:namespaces]
+                                    (fnil conj #{}) ns)))
+                   (-> (update-in env [::remaining] dissoc name)
+                       (update-in [::running] assoc name (js/Date.))))
+               env)))
+    ; need this extra fn because fns with metadata aren't actually JS fns...
+    (js/setTimeout (fn [] (@next-test)) 1)
+    async-test-env))
+
+; TODO this is okay, but still leaves the junk in the :async (sub)environment
+; (which can't be scrubbed until all async tests are done)
+(defn- squelch-internals
+  "Removes framework-internal bits from a test environment for more pleasant human viewing."
+  [test-env]
+  (doto test-env
+    (swap! #(reduce (fn [env [k v]]
+                      (if (= (namespace k) (namespace ::foo))
+                        env
+                        (assoc env k v)))
+                    {}
+                    %))))
+
+(defn- finish-test-entry-point
+  [entry-point? test-env]
+  (if entry-point?
+    (do (if (empty? (::remaining @(:async @test-env)))
+          (swap! test-env dissoc :async)
+          (start-next-async-test (:async @test-env)))
+        @(squelch-internals test-env))
+    test-env))
+
+(defn- schedule-async-test
+  [async-test-env test-name test-fn]
+  (swap! async-test-env update-in [::remaining]
+         (fnil assoc (sorted-map))
+         test-name (with-meta #(test-async-fn async-test-env test-name test-fn)
+                     {:name test-name}))
+  async-test-env)
+
+(defn done*
+  ([{async-test-env :state test-name :test-name :as m} error]
+     (do-report (do-report {:type :error :message "Uncaught exception, not in assertion."
+                            :test-env async-test-env :test-name test-name
+                            :expected nil :actual error}))
+     (done* m))
+  ([{async-test-env :state test-name :test-name}]
+     {:pre [async-test-env test-name]}
+     (let [first-call? (atom false)]
+       (swap! async-test-env
+              (fn [env]
+                (reset! first-call? (contains? (::running env) test-name))
+                ; TODO might be interesting to report runtimes?
+                (update-in env [::running] dissoc test-name)))
+       (if @first-call?
+         (do
+           (do-report {:type :end-test-var, :var test-name
+                       :test-env async-test-env :test-name test-name})
+           (if (testing-complete? async-test-env)
+             (squelch-internals async-test-env)
+             (start-next-async-test async-test-env)))
+         (do-report {:type :multiple-async-done
+                     :test-env async-test-env :test-name test-name
+                     :message "`(done)` called multiple times to signal end-of-test"}))
+
+       async-test-env)))
+
+(defn stop
+  [async-test-env]
+  (swap! async-test-env assoc :stop true))
+
+
+
 ;;; RUNNING TESTS: LOW-LEVEL FUNCTIONS
-;; TODO since there's no vars, rename these helpers to *-fn?
+
+
 (defn test-function
   "If v has a function in its :test metadata, calls that function,
-  with *testing-vars* bound to (conj *testing-vars* v).
+  conjing its name into the test environment's ::test-functions list.
 
   Note that this is the implementation of `test-var` in clojure.test,
   which is a macro in clojurescript.test.  See `cemerick.cljs.test/test-var`
   in the Clojure file for `test-var`."
   {:dynamic true, :added "1.1"}
-  [v]
-  (assert (fn? v) "test-var must be passed the function to be tested (not a symbol naming it)")
-  (when-let [t (:test (meta v))]
-    (binding [*testing-vars* (conj *testing-vars* (or (:name (meta v)) v))]
-      (do-report {:type :begin-test-var, :var v})
-      (inc-report-counter :test)
-      (try (t)
-           (catch js/Error e
-             (do-report {:type :error, :message "Uncaught exception, not in assertion."
-                      :expected nil, :actual e})))
-      (do-report {:type :end-test-var, :var v}))))
+  ([v] (test-function (init-test-environment) v))
+  ([test-env v]
+     (test-runner-entry-point test-env
+      (assert (fn? v) "test-var must be passed the function to be tested (not a symbol naming it)")
+      (let [{t :test test-name :name async? :async} (meta v)]
+        (when t
+          (if async?
+            (schedule-async-test (:async @test-env) test-name t)
+            (try
+             (swap! test-env update-in [::test-functions] conj (or test-name v))
+             (do-report {:type :begin-test-var :var v
+                         :test-env test-env :test-name test-name})
+             (inc-report-counter test-env :test)
+             (try (t {:state test-env :test-name test-name})
+                  (catch js/Error e
+                    (do-report {:type :error :message "Uncaught exception, not in assertion."
+                                :test-env test-env :test-name test-name
+                                :expected nil :actual e})))
+             (do-report {:type :end-test-var :var v
+                         :test-env test-env :test-name test-name})
+             (finally
+               (swap! test-env update-in [::test-functions] pop)))))))))
+
+
 
 (defn test-all-vars
   "Calls test-var on every var interned in the namespace, with fixtures."
   {:added "1.1"}
-  [ns-sym]
-  (let [once-fixture-fn (-> @registered-fixtures ns-sym :once join-fixtures)
-        each-fixture-fn (-> @registered-fixtures ns-sym :each join-fixtures)]
-    (once-fixture-fn
-     (fn []
-       (doseq [v (vals (get @registered-tests ns-sym))]
-         (when (:test (meta v))
-           (each-fixture-fn (fn [] (test-function v)))))))))
+  ([ns-sym] (test-all-vars (init-test-environment) ns-sym))
+  ([test-env ns-sym]
+     (test-runner-entry-point test-env
+      (let [tests (filter #(:test (meta %)) (vals (get @registered-tests ns-sym)))]
+        (let [once-fixture-fn (-> @registered-fixtures ns-sym :once join-fixtures)
+              each-fixture-fn (-> @registered-fixtures ns-sym :each join-fixtures)]
+          (once-fixture-fn
+           (fn []
+             (doseq [v (remove async-test? tests)]
+               (each-fixture-fn (fn [] (test-function test-env v)))))))
+        
+        (reduce #(apply schedule-async-test % %2)
+                (:async @test-env)
+                (map (comp (juxt :name :test) meta)
+                     (filter async-test? tests)))))))
 
 (defn test-ns
   "If the namespace defines a function named test-ns-hook, calls that.
@@ -211,20 +401,25 @@
   *inital-report-counters*.  Returns the final, dereferenced state of
   *report-counters*."
   {:added "1.1"}
-  [ns-sym]
-  (binding [*report-counters* (atom *initial-report-counters*)]
-    (do-report {:type :begin-test-ns, :ns ns-sym})
-    ;; If the namespace has a test-ns-hook function, call that:
-    (if-let [test-hook (get @registered-test-hooks ns-sym)]
-      (test-hook)
-      ;; Otherwise, just test every var in the namespace.
-      (test-all-vars ns-sym))
+  ([ns-sym] (test-ns (init-test-environment) ns-sym))
+  ([test-env ns-sym]
+     (test-runner-entry-point test-env
+      (do-report {:type :begin-test-ns, :ns ns-sym
+                  :test-env test-env})
+      ;; If the namespace has a test-ns-hook function, call that:
+      (if-let [test-hook (get @registered-test-hooks ns-sym)]
+        (test-hook test-env)
+        ;; Otherwise, just test every var in the namespace.
+        (test-all-vars test-env ns-sym))
 
-    (do-report {:type :end-test-ns, :ns ns-sym})
-    @*report-counters*))
-
+      (do-report {:type :end-test-ns, :ns ns-sym, :test-env test-env}))))
 
 ;;; RUNNING TESTS: HIGH-LEVEL FUNCTIONS
+
+(defn- test-summary
+  [test-env]
+  (let [test-env (maybe-deref test-env)]
+    (do-report (assoc (merge-with + test-env @(:async test-env)) :type :summary))))
 
 (defn ^:export run-tests*
   "Runs all tests in the given namespaces; prints results.
@@ -232,10 +427,14 @@
   summarizing test results."
   {:added "1.1"}
   [& namespaces]
-  (let [summary (assoc (apply merge-with + (map test-ns namespaces))
-                  :type :summary)]
-    (do-report summary)
-    summary))
+  (let [[test-env & namespaces] (if (instance? cljs.core.Atom (first namespaces))
+                                  namespaces
+                                  (cons (init-test-environment) namespaces))]
+    (test-runner-entry-point
+     test-env
+     (doseq [ns (distinct namespaces)] (test-ns test-env ns))
+     (on-testing-complete test-env test-summary)
+     (test-summary test-env))))
 
 (defn ^:export run-all-tests
   "Runs all tests in all namespaces; prints results.
@@ -250,9 +449,13 @@
   "Returns true if the given test summary indicates all tests
   were successful, false otherwise."
   {:added "1.1"}
-  [summary]
-  (and (zero? (:fail summary 0))
-       (zero? (:error summary 0))))
+  [test-env]
+  (let [{:keys [fail error async]} (maybe-deref test-env)]
+    (and (testing-complete? test-env)
+         (zero? (or fail 0))
+         (zero? (or error 0))
+         (or (nil? async)
+             (successful? async)))))
 
 (defn ^:export set-print-fn! [f]
   (set! cljs.core.*print-fn* f))

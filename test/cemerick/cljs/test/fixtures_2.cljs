@@ -1,6 +1,6 @@
 (ns cemerick.cljs.test.fixtures-2
   (:require [cemerick.cljs.test :as t])
-  (:require-macros [cemerick.cljs.test :refer (use-fixtures deftest is)]))
+  (:require-macros [cemerick.cljs.test :refer (use-fixtures deftest is run-tests)]))
 
 (def ^:dynamic *n* 0)
 

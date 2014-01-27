@@ -12,6 +12,7 @@ pom.xml.asc
 .classpath
 .project
 .settings
+.nrepl-port
 
 .externalToolBuilders
 bin

@@ -130,7 +130,7 @@
    separately.  In that case, you must define a special function
    named \"test-ns-hook\" that runs your tests in the correct order:
 
-   (defn test-ns-hook []
+   (defn test-ns-hook [cljs-test-ctx]
      (arithmetic))
 
    Note: test-ns-hook prevents execution of fixtures (see below).
@@ -227,10 +227,12 @@
   *load-tests* true)
 
 (defmacro with-test-out
-  "Runs body with *print-fn* bound to the value of *test-print-fn* is bound non-nil."
+  "Runs body with `*print-fn*` bound to the value of the ::test-print-fn in
+[test-ctx], or `cljs.core/*print-fn*` if it is nil."
   {:added "1.1"}
-  [& body]
-  `(binding [cljs.core/*print-fn* (or *test-print-fn* cljs.core/*print-fn*)]
+  [test-env & body]
+  `(binding [cljs.core/*print-fn* (or (::test-print-fn ~test-env)
+                                      cljs.core/*print-fn*)]
      ~@body))
 
 ;;; UTILITIES FOR ASSERTIONS
@@ -263,10 +265,12 @@ whether to use assert-predicate or not."
     `(let [values# (list ~@args)
            result# (apply ~pred values#)]
        (if result#
-         (do-report {:type :pass, :message ~msg,
-                  :expected '~form, :actual (cons ~pred values#)})
-         (do-report {:type :fail, :message ~msg,
-                  :expected '~form, :actual (list '~'not (cons '~pred values#))}))
+         (do-report ~'-test-ctx
+                    {:type :pass, :message ~msg,
+                     :expected '~form, :actual (cons ~pred values#)})
+         (do-report ~'-test-ctx
+                    {:type :fail, :message ~msg,
+                     :expected '~form, :actual (list '~'not (cons '~pred values#))}))
        result#)))
 
 (defn assert-any
@@ -275,13 +279,10 @@ whether to use assert-predicate or not."
   {:added "1.1"}
   [msg form]
   `(let [value# ~form]
-     (if value#
-       (do-report {:type :pass, :message ~msg,
-                :expected '~form, :actual value#})
-       (do-report {:type :fail, :message ~msg,
-                :expected '~form, :actual value#}))
+     (do-report ~'-test-ctx
+                {:type (if value# :pass :fail), :message ~msg,
+                 :expected '~form, :actual value#})
      value#))
-
 
 
 ;;; ASSERTION METHODS
@@ -299,7 +300,7 @@ whether to use assert-predicate or not."
 
 (defmethod assert-expr :always-fail [msg form]
   ;; nil test: always fail
-  `(do-report {:type :fail, :message ~msg}))
+  `(do-report ~'-test-ctx {:type :fail, :message ~msg}))
 
 (defmethod assert-expr :default [msg form]
   (if (and (seq? form) (function? (first form)))
@@ -311,10 +312,12 @@ whether to use assert-predicate or not."
   `(let [object# ~(nth form 2)]
      (let [result# (instance? ~(nth form 1) object#)]
        (if result#
-         (do-report {:type :pass, :message ~msg,
-                  :expected '~form, :actual (type object#)})
-         (do-report {:type :fail, :message ~msg,
-                  :expected '~form, :actual (type object#)}))
+         (do-report ~'-test-ctx
+                    {:type :pass, :message ~msg,
+                     :expected '~form, :actual (type object#)})
+         (do-report ~'-test-ctx
+                    {:type :fail, :message ~msg,
+                     :expected '~form, :actual (type object#)}))
        result#)))
 
 (defmethod assert-expr 'thrown? [msg form]
@@ -324,11 +327,13 @@ whether to use assert-predicate or not."
   (let [klass (second form)
         body (nthnext form 2)]
     `(try ~@body
-          (do-report {:type :fail, :message ~msg,
-                   :expected '~form, :actual nil})
+          (do-report ~'-test-ctx
+                     {:type :fail, :message ~msg,
+                      :expected '~form, :actual nil})
           (~'catch ~klass e#
-            (do-report {:type :pass, :message ~msg,
-                     :expected '~form, :actual e#})
+            (do-report ~'-test-ctx
+                       {:type :pass, :message ~msg,
+                        :expected '~form, :actual e#})
             e#))))
 
 (defmethod assert-expr 'thrown-with-msg? [msg form]
@@ -340,29 +345,53 @@ whether to use assert-predicate or not."
         re (nth form 2)
         body (nthnext form 3)]
     `(try ~@body
-          (do-report {:type :fail, :message ~msg, :expected '~form, :actual nil})
+          (do-report ~'-test-ctx
+                     {:type :fail, :message ~msg,
+                      :expected '~form, :actual nil})
           (~'catch ~klass e#
             (let [m# (.-message e#)]
               (if (re-find ~re m#)
-                (do-report {:type :pass, :message ~msg,
-                         :expected '~form, :actual e#})
-                (do-report {:type :fail, :message ~msg,
-                         :expected '~form, :actual e#})))
+                (do-report ~'-test-ctx
+                           {:type :pass, :message ~msg,
+                            :expected '~form, :actual e#})
+                (do-report ~'-test-ctx
+                           {:type :fail, :message ~msg,
+                            :expected '~form, :actual e#})))
             e#))))
 
+(defmacro with-test-ctx
+  "Establishes [test-ctx] as the \"test context\" for the enclosed [body] of
+  code.  Within the body, the anaphoric `-test-ctx` binding may be used to refer
+  to [test-ctx] (allowing e.g. `is` to be used within the body provided to
+  `with-test-ctx` without explicitly passing a test context).
+
+The test context is used to track and update the state of the broader test run.
+Its internals are a clojurescript.test implementation detail, and should not be
+accessed or depended upon by tests.
+
+This macro emits [body] without decoration when used in a Clojure environment."
+  [test-ctx & body]
+  (if-not (:ns &env)
+    `(do ~@body)
+    `(let [~'-test-ctx ~test-ctx]
+      (try
+        ~@body
+        (catch js/Error e#
+          (done e#))))))
 
 (defmacro try-expr
   "Used by the 'is' macro to catch unexpected exceptions.
   You don't call this."
   {:added "1.1"}
-  [msg form]
-  `(try ~(binding [*cljs-env* &env]
-           (assert-expr msg form))
-        (~'catch js/Error t#
-          (do-report {:type :error, :message ~msg,
-                      :expected '~form, :actual t#}))))
-
-
+  ([msg form] `(try-expr ~'-test-ctx ~msg ~form))
+  ([test-ctx msg form]
+     `(with-test-ctx ~test-ctx
+        (try ~(binding [*cljs-env* &env]
+               (assert-expr msg form))
+            (~'catch js/Error t#
+              (do-report ~'-test-ctx
+                         {:type :error, :message ~msg,
+                          :expected '~form, :actual t#}))))))
 
 ;;; ASSERTION MACROS
 
@@ -384,7 +413,9 @@ whether to use assert-predicate or not."
   re-find) the regular expression re."
   {:added "1.1"} 
   ([form] `(is ~form nil))
-  ([form msg] `(try-expr ~msg ~form)))
+  ([form msg] `(try-expr ~msg ~form))
+  ([test-ctx form msg]
+     `(try-expr ~test-ctx ~msg ~form)))
 
 (defmacro are
   "Checks multiple assertions with a template expression.
@@ -413,11 +444,14 @@ whether to use assert-predicate or not."
 
 (defmacro testing
   "Adds a new string to the list of testing contexts.  May be nested,
-  but must occur inside a test function (deftest)."
+  but must occur inside a _synchronous_ test function (deftest)."
   {:added "1.1"}
   [string & body]
-  `(binding [*testing-contexts* (conj *testing-contexts* ~string)]
-     ~@body))
+  `(try
+     (swap! ~'-test-ctx update-in [::test-contexts] conj ~string)
+     ~@body
+     (finally
+       (swap! ~'-test-ctx update-in [::test-contexts] pop))))
 
 ;;; DEFINING TESTS
 
@@ -428,15 +462,21 @@ whether to use assert-predicate or not."
 (defmacro set-test
   [name & body]
   (when *load-tests*
-    (let [test-name (munged-symbol *cljs-ns* "." name)]
+    (let [mtest-name (munged-symbol *cljs-ns* "." name)
+          test-name (apply symbol (map str [*cljs-ns* name]))]
       `(do
-        (def ~(with-meta name {:declared true})
-          (vary-meta ~name assoc
-                     :name '~name
-                     :test (fn ~(symbol (str name "-test")) [] ~@body)))
-        (register-test! '~*cljs-ns* '~test-name ~test-name)
-        ~name))))
+         (def ~(vary-meta name assoc :declared true)
+           ; not sure why vary-meta wasn't working here, perhaps a CLJS compiler hiccup
+           (with-meta ~name (merge ~(meta name)
+                                   {:name '~test-name
+                                    :test (fn ~(symbol (str name "-test"))
+                                            [test-ctx#]
+                                            (with-test-ctx test-ctx# '~test-name
+                                              ~@body))})))
+         (register-test! '~*cljs-ns* '~test-name ~mtest-name)
+         ~name))))
 
+; TODO this is absolutely pointless in CLJS.
 (defmacro with-test
   "Takes any definition form (that returns a Var) as the first argument.
   Remaining body goes in the :test metadata function for that Var.
@@ -462,6 +502,7 @@ whether to use assert-predicate or not."
   [name & body]
   (when *load-tests*
     `(do
+       ; TODO this should return a map containing just the "summary" report, and an atom to watch for async results
        (defn ~name [] (cemerick.cljs.test/test-var ~(munged-symbol *cljs-ns* "." name)))
        (set-test ~name ~@body))))
 
@@ -506,10 +547,56 @@ emits
 
 ;;; RUNNING TESTS; (many more options available in test.cljs)
 
+(defmacro ^:private test-runner-entry-point
+  [test-ctx & body]
+  `(let [entry-point?# *entry-point*]
+     (binding [*entry-point* false]
+       ~@body
+       (finish-test-entry-point entry-point?# ~test-ctx))))
+
 (defmacro run-tests
   "Runs all tests in the given namespaces; prints results.
   Defaults to current namespace if none given.  Returns a map
   summarizing test results."
   {:added "1.1"}
   ([] `(run-tests* '~*cljs-ns*))
-  ([& namespaces] `(run-tests* ~@namespaces)))
+  ([& namespaces] `(let [namespaces# ~(vec namespaces)]
+                     (apply run-tests*
+                            (if (instance? cljs.core.Atom (first namespaces#))
+                              (conj namespaces# '~*cljs-ns*)
+                              namespaces#)))))
+
+;;; SUPPORTING ASYNC
+
+(defmacro done
+  "Must be called *once* by asynchronous tests when they are complete.  This
+  will trigger final reporting of the progress of the test, and the start of the
+  next asynchronous test.  A warning will be emitted if a test calls `done` more
+  than once.  Tests must implement their own coordination among asynchronous
+  \"threads\" in order to ensure this.
+
+A single Error argument may be provided upon an error; doing so will report the
+error, and trigger final reporting and further test execution as per a non-error
+`(done)` call.
+
+When used in a Clojure environment, this macro is a no-op."
+  ([] (when (:ns &env) `(done* ~'-test-ctx)))
+  ([error] (when (:ns &env) `(done* ~'-test-ctx ~error))))
+
+(defmacro block-or-done
+  "A Clojure/ClojureScript portability aid that uses a core.async channel to
+  coordinate \"completion\" of a test.
+
+[channel] should be a core.async channel that will yield a single truthy value
+when the test in question is complete.  This will trigger a `(done)` call in
+ClojureScript, passing the value obtained from the channel if it is an error.
+In Clojure, the code emitted by this macro will simply block on receiving that
+value, allowing a fundamentally asynchronous test to complete before moving on
+to the next clojure.test test."
+  [channel]
+  (if (:ns &env)
+    `(~'go (let [v (~'<! ~channel)]
+             (if (instance? js/Error v)
+               (done v)
+               (done))))
+    `(~'<!! ~channel)))

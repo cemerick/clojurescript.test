@@ -44,7 +44,7 @@
   (is (instance? A (+ 1 1)) "Should fail"))
 
 (deftest can-test-thrown
-  (is (thrown? js/Error (js/eval "a + 2")) "Should pass")
+  (is (thrown? js/Error (js/eval (str (gensym) " + 2"))) "Should pass")
   ;; No exception is thrown:
   (is (thrown? js/Error (+ 1 1)) "Should fail")
   ;; Wrong class of exception is thrown:
@@ -60,7 +60,9 @@
   ;; No exception is thrown:
   (is (thrown? js/Error (+ 1 1)) "Should fail")
   ;; Wrong class of exception is thrown:
-  (is (thrown-with-msg? js/SyntaxError #"Divide by zero" (js/eval "a + 2")) "Should error"))
+  (is (thrown-with-msg? js/SyntaxError #"Divide by zero"
+                        (js/eval (str (gensym) " + 2")))
+      "Should error"))
 
 (deftest can-catch-unexpected-exceptions
   (is (= 1 (throw (js/Error.))) "Should error"))
@@ -85,7 +87,7 @@
 
 (declare ^:dynamic original-report)
 
-(defn custom-report [data]
+(defn custom-report [{:keys [test-env test-name] :as data}]
   (let [event (:type data)
         msg (:message data)
         expected (:expected data)
@@ -97,14 +99,16 @@
                  :else true)]
     (if passed
       (original-report {:type :pass, :message msg,
+                        :test-env test-env :test-name test-name
                         :expected expected, :actual actual})
       (original-report {:type :fail, :message (str msg " but got " event)
+                        :test-env test-env :test-name test-name
                         :expected expected, :actual actual}))))
 
 ;; test-ns-hook will be used by test/test-ns to run tests in this
 ;; namespace.
-(deftesthook test-ns-hook []
+(deftesthook test-ns-hook [cljs-test-env]
   (binding [original-report t/report
             t/report custom-report]
-    (t/test-all-vars 'cemerick.cljs.test.basic)
-    (test-var #'can-test-regexps)))
+    (t/test-all-vars cljs-test-env 'cemerick.cljs.test.basic)
+    (t/test-function cljs-test-env can-test-regexps)))

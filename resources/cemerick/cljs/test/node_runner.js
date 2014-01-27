@@ -31,7 +31,7 @@ cemerick.cljs.test.set_print_fn_BANG_(function(x) {
 
 var success = (function() {
     var results = cemerick.cljs.test.run_all_tests();
-    return cemerick.cljs.test.successful_QMARK_(results);
+    cemerick.cljs.test.on_testing_complete(results, function () {
+        process.exit(cemerick.cljs.test.successful_QMARK_(results) ? 0 : 1);
+    });
 })();
-
-process.exit(success ? 0 : 1);

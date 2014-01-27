@@ -1,5 +1,5 @@
 (ns cemerick.cljs.test.are
-  (:require-macros [cemerick.cljs.test :refer (is deftest are)])
+  (:require-macros [cemerick.cljs.test :refer (is deftest are run-tests)])
   (:require [cemerick.cljs.test :as t]))
 
 ;; this actually is more of a test of the function? predicate in

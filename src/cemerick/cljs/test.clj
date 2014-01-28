@@ -398,15 +398,14 @@ whether to use assert-predicate or not."
   "Used by the 'is' macro to catch unexpected exceptions.
   You don't call this."
   {:added "1.1"}
-  ([msg form] `(try-expr (test-context) ~msg ~form))
-  ([test-ctx msg form]
-     `(with-test-ctx ~test-ctx
-        (try ~(binding [*cljs-env* &env]
-               (assert-expr msg form))
-            (~'catch js/Error t#
-              (do-report (test-context)
-                         {:type :error, :message ~msg,
-                          :expected '~form, :actual t#}))))))
+  [test-ctx msg form]
+  `(with-test-ctx ~test-ctx
+     (try ~(binding [*cljs-env* &env]
+             (assert-expr msg form))
+          (~'catch js/Error t#
+            (do-report (test-context)
+                       {:type :error, :message ~msg,
+                        :expected '~form, :actual t#})))))
 
 ;;; ASSERTION MACROS
 
@@ -427,10 +426,9 @@ whether to use assert-predicate or not."
   thrown AND that the message on the exception matches (with
   re-find) the regular expression re."
   {:added "1.1"} 
-  ([form] `(is ~form nil))
-  ([form msg] `(try-expr ~msg ~form))
-  ([test-ctx form msg]
-     `(try-expr ~test-ctx ~msg ~form)))
+  ([form] `(try-expr (test-context) nil ~form))
+  ([form msg] `(try-expr (test-context) ~msg ~form))
+  ([test-ctx form msg] `(try-expr ~test-ctx ~msg ~form)))
 
 (defmacro are
   "Checks multiple assertions with a template expression.

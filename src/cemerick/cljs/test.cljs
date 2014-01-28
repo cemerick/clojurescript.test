@@ -74,16 +74,21 @@
   "Registers a watcher on the :async testing (sub)environment provided by
 [test-env]; when its key metrics (:test, :pass, :fail, :error) change,
 [callback] will be called with [test-env].  The watcher will be removed when all
-tests are complete."
+tests are complete.
+
+If [test-env] is already complete, [callback] will be called with it as an
+argument immediately, and no watcher will be registered."
   [test-env callback]
-  (add-watch (:async (maybe-deref test-env))
-             (gensym "on-progress")
-             (fn [key ref old new]
-               (let [[oldv newv] (map #(select-keys % [:test :pass :fail :error]) [old new])
-                     complete? (testing-complete? new)]
-                 (when (or complete? (not= oldv newv))
-                   (callback (maybe-deref test-env)))
-                 (when complete? (remove-watch ref key)))))
+  (if (testing-complete? test-env)
+    (js/setTimeout #(callback test-env) 1)
+    (add-watch (:async (maybe-deref test-env))
+              (gensym "on-progress")
+              (fn [key ref old new]
+                (let [[oldv newv] (map #(select-keys % [:test :pass :fail :error]) [old new])
+                      complete? (testing-complete? new)]
+                  (when (or complete? (not= oldv newv))
+                    (callback (maybe-deref test-env)))
+                  (when complete? (remove-watch ref key))))))
   test-env)
 
 (defn ^:export on-testing-complete
@@ -423,7 +428,8 @@ tests are complete."
 (defn- test-summary
   [test-env]
   (let [test-env (maybe-deref test-env)]
-    (do-report (assoc (merge-with + test-env @(:async test-env)) :type :summary))))
+    (do-report (assoc (merge-with + test-env (maybe-deref (:async test-env)))
+                 :type :summary))))
 
 (defn ^:export run-tests*
   "Runs all tests in the given namespaces; prints results.

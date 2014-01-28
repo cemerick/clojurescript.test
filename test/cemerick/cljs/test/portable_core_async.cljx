@@ -8,8 +8,12 @@
                                                          block-or-done with-test-ctx)]
                           [cljs.core.async.macros :refer (go go-loop alts!)]))
 
-(deftest synchronous-test
+(defn- other-fn
+  []
   (is true))
+
+(deftest synchronous-test
+  (other-fn))
 
 (deftest ^:async pointless-counting
   (let [inputs (repeatedly 10000 #(go 1))

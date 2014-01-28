@@ -487,6 +487,7 @@ whether to use assert-predicate or not."
                                    {:name (with-meta '~test-name ~(meta name))
                                     :test (fn ~(symbol (str name "-test"))
                                             [test-ctx#]
+                                            (prn "xx" test-ctx#)
                                             (with-test-ctx test-ctx#
                                               ~@body))})))
          (register-test! '~*cljs-ns* '~test-name ~mtest-name)
@@ -539,11 +540,13 @@ test fn, even if it's wrapped in a `(var ...)` form, so this:
 emits
 
   (cemerick.cljs.test/test-function test-name)"
-  [var-sym]
-  `(cemerick.cljs.test/test-function
-    ~(if (and (sequential? var-sym) (= 'var (first var-sym)))
-       (second var-sym)
-       var-sym)))
+  ([var-sym] `(test-var (init-test-environment) ~var-sym))
+  ([test-env var-sym]
+     `(cemerick.cljs.test/test-function
+       ~test-env
+       ~(if (and (sequential? var-sym) (= 'var (first var-sym)))
+          (second var-sym)
+          var-sym))))
 
 (defmacro deftest-
   "Like deftest but creates a private var."

@@ -619,8 +619,9 @@ value, allowing a fundamentally asynchronous test to complete before moving on
 to the next clojure.test test."
   [channel]
   (if (:ns &env)
-    `(~'go (let [v (~'<! ~channel)]
+    `(cljs.core.async.macros/go
+      (let [v (cljs.core.async/<! ~channel)]
              (if (instance? js/Error v)
                (done v)
                (done))))
-    `(~'<!! ~channel)))
+    `(clojure.core.async/<!! ~channel)))

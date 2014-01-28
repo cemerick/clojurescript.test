@@ -487,7 +487,6 @@ whether to use assert-predicate or not."
                                    {:name (with-meta '~test-name ~(meta name))
                                     :test (fn ~(symbol (str name "-test"))
                                             [test-ctx#]
-                                            (prn "xx" test-ctx#)
                                             (with-test-ctx test-ctx#
                                               ~@body))})))
          (register-test! '~*cljs-ns* '~test-name ~mtest-name)

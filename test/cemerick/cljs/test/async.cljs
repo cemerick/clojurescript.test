@@ -3,8 +3,12 @@
                     :refer (is test-var deftest run-tests done with-test-ctx)])
   (:require [cemerick.cljs.test :as t]))
 
-(deftest synchronous-test
+(defn- other-fn
+  []
   (is true))
+
+(deftest synchronous-test
+  (other-fn))
 
 ; because I find interleaving callback / timeouts really difficult to read
 (defn- do-later

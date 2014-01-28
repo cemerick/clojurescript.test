@@ -10,6 +10,10 @@
 ; entry point
 (def ^:dynamic ^:private *entry-point* true)
 
+; bound to the current "test context" for the duration of _synchronous_ tests
+; this remains nil for all ^:async tests
+(def ^:dynamic *test-ctx* nil)
+
 ;; The globals that clojure.test uses for reporting functions are folded in the
 ;; "test environment" that is explicitly passed around
 

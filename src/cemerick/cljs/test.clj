@@ -235,6 +235,39 @@
                                       cljs.core/*print-fn*)]
      ~@body))
 
+(defmacro with-test-ctx
+  "Establishes [test-ctx] as the \"test context\" for the enclosed [body] of
+  code.  This is done in two ways:
+
+* For asynchronous tests, the anaphoric `-test-ctx` binding may be used to refer
+  to [test-ctx] (allowing e.g. `is` to be used within the body provided to
+  `with-test-ctx` without explicitly passing a test context).
+* For other tests, `with-test-ctx` binds `*test-ctx*` to [test-ctx], so that
+  typical patterns of factoring test assertions into other functions is possible
+  without explicitly passing the context around.
+
+The test context is used to track and update the state of the broader test run.
+Its internals are a clojurescript.test implementation detail, and should not be
+accessed or depended upon by tests.
+
+This macro emits [body] without decoration when used in a Clojure environment."
+  [test-ctx & body]
+  (if-not (:ns &env)
+    `(do ~@body)
+    `(let [~'-test-ctx ~test-ctx]
+       (binding [*test-ctx* (when-not (:async (meta (:test-name test-ctx)))
+                              ~'-test-ctx)]
+         (try
+         ~@body
+         (catch js/Error e#
+           (done e#)))))))
+
+(defmacro ^:private test-context
+  []
+  (if (contains? (:locals &env) '-test-ctx)
+    '-test-ctx
+    `*test-ctx*))
+
 ;;; UTILITIES FOR ASSERTIONS
 
 (def ^:private ^:dynamic *cljs-env*
@@ -265,10 +298,10 @@ whether to use assert-predicate or not."
     `(let [values# (list ~@args)
            result# (apply ~pred values#)]
        (if result#
-         (do-report ~'-test-ctx
+         (do-report (test-context)
                     {:type :pass, :message ~msg,
                      :expected '~form, :actual (cons ~pred values#)})
-         (do-report ~'-test-ctx
+         (do-report (test-context)
                     {:type :fail, :message ~msg,
                      :expected '~form, :actual (list '~'not (cons '~pred values#))}))
        result#)))
@@ -279,7 +312,7 @@ whether to use assert-predicate or not."
   {:added "1.1"}
   [msg form]
   `(let [value# ~form]
-     (do-report ~'-test-ctx
+     (do-report (test-context)
                 {:type (if value# :pass :fail), :message ~msg,
                  :expected '~form, :actual value#})
      value#))
@@ -300,7 +333,7 @@ whether to use assert-predicate or not."
 
 (defmethod assert-expr :always-fail [msg form]
   ;; nil test: always fail
-  `(do-report ~'-test-ctx {:type :fail, :message ~msg}))
+  `(do-report (test-context) {:type :fail, :message ~msg}))
 
 (defmethod assert-expr :default [msg form]
   (if (and (seq? form) (function? (first form)))
@@ -312,10 +345,10 @@ whether to use assert-predicate or not."
   `(let [object# ~(nth form 2)]
      (let [result# (instance? ~(nth form 1) object#)]
        (if result#
-         (do-report ~'-test-ctx
+         (do-report (test-context)
                     {:type :pass, :message ~msg,
                      :expected '~form, :actual (type object#)})
-         (do-report ~'-test-ctx
+         (do-report (test-context)
                     {:type :fail, :message ~msg,
                      :expected '~form, :actual (type object#)}))
        result#)))
@@ -327,11 +360,11 @@ whether to use assert-predicate or not."
   (let [klass (second form)
         body (nthnext form 2)]
     `(try ~@body
-          (do-report ~'-test-ctx
+          (do-report (test-context)
                      {:type :fail, :message ~msg,
                       :expected '~form, :actual nil})
           (~'catch ~klass e#
-            (do-report ~'-test-ctx
+            (do-report (test-context)
                        {:type :pass, :message ~msg,
                         :expected '~form, :actual e#})
             e#))))
@@ -345,51 +378,33 @@ whether to use assert-predicate or not."
         re (nth form 2)
         body (nthnext form 3)]
     `(try ~@body
-          (do-report ~'-test-ctx
+          (do-report (test-context)
                      {:type :fail, :message ~msg,
                       :expected '~form, :actual nil})
           (~'catch ~klass e#
             (let [m# (.-message e#)]
               (if (re-find ~re m#)
-                (do-report ~'-test-ctx
+                (do-report (test-context)
                            {:type :pass, :message ~msg,
                             :expected '~form, :actual e#})
-                (do-report ~'-test-ctx
+                (do-report (test-context)
                            {:type :fail, :message ~msg,
                             :expected '~form, :actual e#})))
             e#))))
 
-(defmacro with-test-ctx
-  "Establishes [test-ctx] as the \"test context\" for the enclosed [body] of
-  code.  Within the body, the anaphoric `-test-ctx` binding may be used to refer
-  to [test-ctx] (allowing e.g. `is` to be used within the body provided to
-  `with-test-ctx` without explicitly passing a test context).
 
-The test context is used to track and update the state of the broader test run.
-Its internals are a clojurescript.test implementation detail, and should not be
-accessed or depended upon by tests.
-
-This macro emits [body] without decoration when used in a Clojure environment."
-  [test-ctx & body]
-  (if-not (:ns &env)
-    `(do ~@body)
-    `(let [~'-test-ctx ~test-ctx]
-      (try
-        ~@body
-        (catch js/Error e#
-          (done e#))))))
 
 (defmacro try-expr
   "Used by the 'is' macro to catch unexpected exceptions.
   You don't call this."
   {:added "1.1"}
-  ([msg form] `(try-expr ~'-test-ctx ~msg ~form))
+  ([msg form] `(try-expr (test-context) ~msg ~form))
   ([test-ctx msg form]
      `(with-test-ctx ~test-ctx
         (try ~(binding [*cljs-env* &env]
                (assert-expr msg form))
             (~'catch js/Error t#
-              (do-report ~'-test-ctx
+              (do-report (test-context)
                          {:type :error, :message ~msg,
                           :expected '~form, :actual t#}))))))
 
@@ -448,10 +463,10 @@ This macro emits [body] without decoration when used in a Clojure environment."
   {:added "1.1"}
   [string & body]
   `(try
-     (swap! ~'-test-ctx update-in [::test-contexts] conj ~string)
+     (swap! (test-context) update-in [::test-contexts] conj ~string)
      ~@body
      (finally
-       (swap! ~'-test-ctx update-in [::test-contexts] pop))))
+       (swap! (test-context) update-in [::test-contexts] pop))))
 
 ;;; DEFINING TESTS
 
@@ -468,10 +483,13 @@ This macro emits [body] without decoration when used in a Clojure environment."
          (def ~(vary-meta name assoc :declared true)
            ; not sure why vary-meta wasn't working here, perhaps a CLJS compiler hiccup
            (with-meta ~name (merge ~(meta name)
-                                   {:name '~test-name
+                                   ; passing along fn metadata so that
+                                   ; with-test-ctx can determine whether a test
+                                   ; is async or not
+                                   {:name (with-meta '~test-name ~(meta name))
                                     :test (fn ~(symbol (str name "-test"))
                                             [test-ctx#]
-                                            (with-test-ctx test-ctx# '~test-name
+                                            (with-test-ctx test-ctx#
                                               ~@body))})))
          (register-test! '~*cljs-ns* '~test-name ~mtest-name)
          ~name))))
@@ -480,6 +498,9 @@ This macro emits [body] without decoration when used in a Clojure environment."
 (defmacro with-test
   "Takes any definition form (that returns a Var) as the first argument.
   Remaining body goes in the :test metadata function for that Var.
+
+  Note that the body of the test is wrapped in `with-test-ctx`, and so
+  `-test-ctx` is implicitly bound to the current test context.
 
   When *load-tests* is false, only evaluates the definition, ignoring
   the tests."
@@ -496,6 +517,9 @@ This macro emits [body] without decoration when used in a Clojure environment."
   Note: Actually, the test body goes in the :test metadata on the var,
   and the real function (the value of the var) calls test-var on
   itself.
+
+  Note that the body of the test is wrapped in `with-test-ctx`, and so
+  `-test-ctx` is implicitly bound to the current test context.
 
   When *load-tests* is false, deftest is ignored."
   {:added "1.1"}
@@ -580,8 +604,8 @@ error, and trigger final reporting and further test execution as per a non-error
 `(done)` call.
 
 When used in a Clojure environment, this macro is a no-op."
-  ([] (when (:ns &env) `(done* ~'-test-ctx)))
-  ([error] (when (:ns &env) `(done* ~'-test-ctx ~error))))
+  ([] (when (:ns &env) `(done* (test-context))))
+  ([error] (when (:ns &env) `(done* (test-context) ~error))))
 
 (defmacro block-or-done
   "A Clojure/ClojureScript portability aid that uses a core.async channel to

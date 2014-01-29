@@ -288,6 +288,14 @@ whether to use assert-predicate or not."
     (not (.startsWith (name x) "."))
     (not (get-expander x *cljs-env*))))
 
+(defmacro ^:private throw-on-test-context-assertion-form
+  "This is a hack to ensure that a reasonable error is thrown (instead of
+silent, possibly incorrect test success) when `is` is incorrectly used with an
+explicit test context, e.g. (is -test-ctx (some-assertion))."
+  [x]
+  `(when (instance? TestContext ~x)
+         (throw (js/Error. "TestContext provided as [form] in `is` assertion. If using `is` with an explicit test context, use the 3-arg arity."))))
+
 (defn assert-predicate
   "Returns generic assertion code for any functional predicate.  The
   'expected' argument to 'report' will contains the original form, the
@@ -300,6 +308,7 @@ whether to use assert-predicate or not."
         pred (first form)]
     `(let [values# (list ~@args)
            result# (apply ~pred values#)]
+       (throw-on-test-context-assertion-form result#) 
        (if result#
          (do-report (test-context)
                     {:type :pass, :message ~msg,
@@ -315,6 +324,7 @@ whether to use assert-predicate or not."
   {:added "1.1"}
   [msg form]
   `(let [value# ~form]
+     (throw-on-test-context-assertion-form value#)
      (do-report (test-context)
                 {:type (if value# :pass :fail), :message ~msg,
                  :expected '~form, :actual value#})

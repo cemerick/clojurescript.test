@@ -53,6 +53,8 @@
   [ns name]
   (swap! registered-test-hooks assoc ns name))
 
+(defrecord TestContext [test-env test-name])
+
 ;;; UTILITIES FOR REPORTING FUNCTIONS
 
 (defn- maybe-deref
@@ -146,8 +148,9 @@ argument immediately, and no watcher will be registered."
    If you are writing a custom assert-expr method, call this function
    to pass test results to report."
   {:added "1.2"}
-  ([{test-env :state test-name :test-name} m]
-     (do-report (assoc m :test-env test-env :test-name test-name)))
+  ([{:keys [test-env test-name] :as test-ctx} m]
+     {:pre [(instance? TestContext test-ctx)]}
+     (do-report (merge m test-ctx)))
   ([m]
      (report (case (:type m)
                :fail (merge (file-and-line (js/Error)) m)
@@ -259,7 +262,7 @@ argument immediately, and no watcher will be registered."
   (do-report {:type :begin-test-var, :var test-fn
               :test-env async-test-env :test-name test-name})
   (inc-report-counter async-test-env :test)
-  (test-fn {:state async-test-env :test-name test-name}))
+  (test-fn (TestContext. async-test-env test-name)))
 
 (defn- start-next-async-test
   [async-test-env]
@@ -314,13 +317,14 @@ argument immediately, and no watcher will be registered."
   async-test-env)
 
 (defn done*
-  ([{async-test-env :state test-name :test-name :as m} error]
-     (do-report (do-report {:type :error :message "Uncaught exception, not in assertion."
-                            :test-env async-test-env :test-name test-name
-                            :expected nil :actual error}))
-     (done* m))
-  ([{async-test-env :state test-name :test-name}]
-     {:pre [async-test-env test-name]}
+  ([{:keys [test-env test-name] :as test-ctx} error]
+     {:pre [(instance? TestContext test-ctx)]}
+     (do-report (do-report (merge {:type :error :message "Uncaught exception, not in assertion."
+                                   :expected nil :actual error}
+                                  test-ctx)))
+     (done* test-ctx))
+  ([{async-test-env :test-env :keys [test-name] :as test-ctx}]
+     {:pre [(instance? TestContext test-ctx)]}
      (let [first-call? (atom false)]
        (swap! async-test-env
               (fn [env]
@@ -329,14 +333,14 @@ argument immediately, and no watcher will be registered."
                 (update-in env [::running] dissoc test-name)))
        (if @first-call?
          (do
-           (do-report {:type :end-test-var, :var test-name
-                       :test-env async-test-env :test-name test-name})
+           (do-report (merge {:type :end-test-var, :var test-name}
+                             test-ctx))
            (if (testing-complete? async-test-env)
              (squelch-internals async-test-env)
              (start-next-async-test async-test-env)))
-         (do-report {:type :multiple-async-done
-                     :test-env async-test-env :test-name test-name
-                     :message "`(done)` called multiple times to signal end-of-test"}))
+         (do-report (merge {:type :multiple-async-done
+                            :message "`(done)` called multiple times to signal end-of-test"}
+                           test-ctx)))
 
        async-test-env)))
 
@@ -370,7 +374,7 @@ argument immediately, and no watcher will be registered."
              (do-report {:type :begin-test-var :var v
                          :test-env test-env :test-name test-name})
              (inc-report-counter test-env :test)
-             (try (t {:state test-env :test-name test-name})
+             (try (t (TestContext. test-env test-name))
                   (catch js/Error e
                     (do-report {:type :error :message "Uncaught exception, not in assertion."
                                 :test-env test-env :test-name test-name

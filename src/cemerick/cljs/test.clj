@@ -254,13 +254,16 @@ This macro emits [body] without decoration when used in a Clojure environment."
   [test-ctx & body]
   (if-not (:ns &env)
     `(do ~@body)
-    `(let [~'-test-ctx ~test-ctx]
-       (binding [*test-ctx* (when-not (:async (meta (:test-name test-ctx)))
-                              ~'-test-ctx)]
+    `(let [~'-test-ctx ~test-ctx
+           async?# (:async (meta (:test-name ~'-test-ctx)))]
+       (binding [*test-ctx* (when-not async?# ~'-test-ctx)]
          (try
          ~@body
          (catch js/Error e#
-           (done e#)))))))
+           (if async?#
+             (done e#)
+             ; this will get picked up by the catch in test-function
+             (throw e#))))))))
 
 (defmacro ^:private test-context
   []

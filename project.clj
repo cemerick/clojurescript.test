@@ -1,4 +1,4 @@
-(defproject com.cemerick/clojurescript.test "0.2.2"
+(defproject com.cemerick/clojurescript.test "0.2.3-SNAPSHOT"
   :description "Port of clojure.test targeting ClojureScript."
   :url "http://github.com/cemerick/clojurescript.test"
   :license {:name "Eclipse Public License"
@@ -21,7 +21,8 @@
                         :compiler {:output-to "target/cljs/advanced.js"
                                    :optimizations :advanced
                                    :pretty-print true}}]
-              :test-commands {"phantom-whitespace" ["phantomjs" :runner
+              :test-commands {; PhantomJS tests
+                              "phantom-whitespace" ["phantomjs" :runner
                                                     "window.literal_js_was_evaluated=true"
                                                     "target/cljs/whitespace.js"
                                                     "test/cemerick/cljs/test/extra_test_command_file.js"]
@@ -33,10 +34,28 @@
                                                   "window.literal_js_was_evaluated=true"
                                                   "target/cljs/advanced.js"
                                                   "test/cemerick/cljs/test/extra_test_command_file.js"]
+
+                              ; Node.js tests
                               "node" ["node" :node-runner
                                       "this.literal_js_was_evaluated=true"
                                       "target/cljs/advanced.js"
-                                      "test/cemerick/cljs/test/extra_test_command_file.js"]}}
+                                      "test/cemerick/cljs/test/extra_test_command_file.js"]
+
+                              ; Rhino tests
+                              "rhino-whitespace" ["rhino" "-opt" "-1" :rhino-runner
+                                                  "this.literal_js_was_evaluated=true"
+                                                  "target/cljs/whitespace.js"
+                                                  "test/cemerick/cljs/test/extra_test_command_file.js"]
+                              "rhino-simple" ["rhino" "-opt" "-1" :rhino-runner
+                                                  "this.literal_js_was_evaluated=true"
+                                                  "target/cljs/simple.js"
+                                                  "test/cemerick/cljs/test/extra_test_command_file.js"]
+                              "rhino-advanced" ["rhino" "-opt" "-1" :rhino-runner
+                                                  "this.literal_js_was_evaluated=true"
+                                                  "target/cljs/advanced.js"
+                                                  "test/cemerick/cljs/test/extra_test_command_file.js"]
+
+}}
 
   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
 
@@ -45,7 +64,7 @@
                       :plugins [[com.cemerick/austin "0.1.3"]]}
              ; self-reference and chained `lein install; lein test` invocation
              ; needed to use the project as its own plugin. Leiningen :-(
-             :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.2.2-SNAPSHOT"]]}]}
+             :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.2.3-SNAPSHOT"]]}]}
 
   :aliases  {"cleantest" ["with-profile" "self-plugin:self-plugin,latest"
                           "do" "clean," "test," "cljsbuild" "test"]

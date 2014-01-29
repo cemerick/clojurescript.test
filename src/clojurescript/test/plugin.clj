@@ -18,12 +18,13 @@
                  version))
     version))
 
-(defn runner-path! [[runner resource-file]]
+(defn runner-path! [[runner filename]]
   "Creates a temp file for the given runner resource file"
-  (let [runner-path (.getAbsolutePath
+  (let [full-path (str "cemerick/cljs/test/" filename)
+        runner-path (.getAbsolutePath
                      (doto (File/createTempFile (name runner) ".js")
                        (.deleteOnExit)
-                       (#(copy (slurp (resource resource-file)) %))))]
+                       (#(copy (slurp (resource full-path)) %))))]
 
     [runner runner-path]))
 
@@ -36,14 +37,15 @@ associating the runner keyword with the corresponding temp file"
   "Does two things:
 
 1. Modify all :cljsbuild :test-command vectors, swapping :runner, :node-runner,
-  and :nodejs-runner keywords for the string path to the corresponding packaged
-  script.
+  :nodejs-runner and :rhino-runner keywords for the string path to the
+  corresponding packaged script.
 2. Add [com.cemerick/clojurescript-test \"CURRENT_VERSION\"] as a project
   dependency."
   [project]
-  (let [runners [[:runner "cemerick/cljs/test/runner.js"]
-                 [:node-runner "cemerick/cljs/test/node_runner.js"]
-                 [:nodejs-runner "cemerick/cljs/test/node_runner.js"]]
+  (let [runners [[:runner "runner.js"]
+                 [:node-runner "node_runner.js"]
+                 [:nodejs-runner "node_runner.js"]
+                 [:rhino-runner "rhino_runner.js"]]
         runner-paths (runner-paths! runners)]
     (-> project
         (update-in [:dependencies]

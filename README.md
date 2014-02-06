@@ -178,11 +178,13 @@ arbitrary JavaScript expressions (useful for e.g. configuring runtime test
 properties...see the subsection below on using this capability, especially in
 conjunction with advanced compilation).
 
-To run your tests with node.js instead of `phantomjs`, just change the
+
+##### Node.js
+To run your tests with [node.js](http://nodejs.org/) instead of phantomjs, just change the
 executable name and the `:runner` keyword in your `:test-commands` vectors like so:
 
 ```
-:test-commands {"unit-tests" ["node" :node-runner 
+:test-commands {"unit-tests" ["node" :node-runner
                               ; extra code/files here...
                              ]}
 ```
@@ -190,13 +192,22 @@ executable name and the `:runner` keyword in your `:test-commands` vectors like 
 **Note that you must compile your ClojureScript code with
 `:optimizations :advanced` to run it on node.js.**
 
+##### Rhino
+To run your tests with [rhino](https://developer.mozilla.org/en/docs/Rhino), change the executable name and the `:runner` keyword in your `:test-commands` vectors like so:
+```
+:test-commands {"unit-tests" ["rhino" "-opt" "-1" :rhino-runner
+                              ; extra code/files here...
+                             ]}
+```
+Note that rhino doesn't support any HTML or DOM related functions and objects so it can be used mainly for business-only logic or you have to mock all DOM functions by yourself.
+
 clojurescript.test bundles test runner scripts for various environments
-(currently, phantomjs and node.js).  As long as you add clojurescript.test to
+(currently, phantomjs, node.js and rhino).  As long as you add clojurescript.test to
 your `project.clj` as a `:plugin`, then it will replace any occurrences of
-`:runner` and `:node-runner` in your `:test-commands` vectors with the path to
+`:runner`, `:node-runner` and `:rhino-runner` in your `:test-commands` vectors with the path to
 the corresponding test runner script.
 
-**Wanted: runners for other JavaScript environments, e.g. Rhino, XUL, the
+**Wanted: runners for other JavaScript environments, e.g. XUL, the
 headed browsers of all sorts, etc**
 
 All test runner scripts load the output of the ClojureScript compilation, run
@@ -285,7 +296,7 @@ your cljsc/lein-cljsbuild configuration.
 ## Need Help?
 
 Send a message to the [ClojureScript](http://groups.google.com/group/clojurescript)
-mailing list, or ping `cemerick` on freenode irc or 
+mailing list, or ping `cemerick` on freenode irc or
 [twitter](http://twitter.com/cemerick) if you have questions
 or would like to contribute patches.
 

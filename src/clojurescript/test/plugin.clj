@@ -46,10 +46,16 @@ associating the runner keyword with the corresponding temp file"
                  [:node-runner "node_runner.js"]
                  [:nodejs-runner "node_runner.js"]
                  [:rhino-runner "rhino_runner.js"]]
-        runner-paths (runner-paths! runners)]
+        runner-paths (runner-paths! runners)
+        namespaced-runner-paths (->> runner-paths
+                                     (map (fn [[k path]]
+                                            [(keyword "cljs.test" (name k)) path]))
+                                     (into {}))]
     (-> project
         (update-in [:dependencies]
                    (fnil into [])
                    [['com.cemerick/clojurescript.test version]])
         (update-in [:cljsbuild :test-commands]
-                   #(postwalk-replace runner-paths %)))))
+                   (partial postwalk-replace runner-paths))
+        ((partial postwalk-replace namespaced-runner-paths)))))
+

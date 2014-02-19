@@ -66,7 +66,7 @@ Here's a simple ClojureScript namespace that uses clojurescript.test:
     (is (thrown-with-msg? js/Error #"integer?" (pennies->dollar-string 564.2)))))
 ```
 
-**Note**: each namespace in your project must `(:require
+**Note**: each test namespace in your project must `(:require
 cemerick.cljs.test)` even if you only use macros. Otherwise, the ClojureScript
 compilation process won't include clojurescript.test in its output, resulting
 in an error similar to "`ReferenceError: Can't find variable: cemerick`".

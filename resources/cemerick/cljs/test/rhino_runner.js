@@ -1,11 +1,31 @@
+var haveCljsTest = function () {
+  return (typeof cemerick !== "undefined" &&
+	  typeof cemerick.cljs !== "undefined" &&
+	  typeof cemerick.cljs.test !== "undefined" &&
+	  typeof cemerick.cljs.test.run_all_tests === "function");
+};
+
 arguments.forEach(function (arg) {
-    print(arg)
+    print(arg);
     if (new java.io.File(arg).exists()) {
       try {
         load(arg);
       } catch (e) {
-        print("Error in file: \"" + arg + "\"");
-        print(e);
+	if (haveCljsTest()) {
+	  print("Error in file: \"" + arg + "\"");
+	  print(e);
+	} else {
+	  var messageLines = [
+	    "",
+	    "ERROR: cemerick.cljs.test was not required.",
+	    "",
+	    "You can resolve this issue by ensuring [cemerick.cljs.test] appears",
+	    "in the :require clause of your test suite namespaces.",
+	    ""
+	  ];
+	  print(messageLines.join("\n"));
+	  java.lang.System.exit(1);
+	}
       }
     } else {
       try {

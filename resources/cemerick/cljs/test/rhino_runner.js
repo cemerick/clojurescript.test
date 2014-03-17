@@ -1,5 +1,4 @@
 arguments.forEach(function (arg) {
-    print(arg)
     if (new java.io.File(arg).exists()) {
       try {
         load(arg);

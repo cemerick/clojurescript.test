@@ -35,18 +35,18 @@
                                                   "test/cemerick/cljs/test/extra_test_command_file.js"]
                               
                               ; Rhino tests
-                              "rhino-whitespace" ["rhino" "-opt" "-1" :rhino-runner
-                                                  "this.literal_js_was_evaluated=true"
-                                                  "target/cljs/whitespace.js"
-                                                  "test/cemerick/cljs/test/extra_test_command_file.js"]
-                              "rhino-simple" ["rhino" "-opt" "-1" :rhino-runner
-                                                  "this.literal_js_was_evaluated=true"
-                                                  "target/cljs/simple.js"
-                                                  "test/cemerick/cljs/test/extra_test_command_file.js"]
-                              "rhino-advanced" ["rhino" "-opt" "-1" :rhino-runner
-                                                  "this.literal_js_was_evaluated=true"
-                                                  "target/cljs/advanced.js"
-                                                  "test/cemerick/cljs/test/extra_test_command_file.js"]
+                              ; "rhino-whitespace" ["rhino" "-opt" "-1" :rhino-runner
+                              ;                     "this.literal_js_was_evaluated=true"
+                              ;                     "target/cljs/whitespace.js"
+                              ;                     "test/cemerick/cljs/test/extra_test_command_file.js"]
+                              ; "rhino-simple" ["rhino" "-opt" "-1" :rhino-runner
+                              ;                     "this.literal_js_was_evaluated=true"
+                              ;                     "target/cljs/simple.js"
+                              ;                     "test/cemerick/cljs/test/extra_test_command_file.js"]
+                              ; "rhino-advanced" ["rhino" "-opt" "-1" :rhino-runner
+                              ;                     "this.literal_js_was_evaluated=true"
+                              ;                     "target/cljs/advanced.js"
+                              ;                     "test/cemerick/cljs/test/extra_test_command_file.js"]
 
                               ; node tests
                               "node-simple" ["node" :node-runner

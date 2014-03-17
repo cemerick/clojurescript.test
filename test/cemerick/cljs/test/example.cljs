@@ -3,6 +3,7 @@
   (:require [cemerick.cljs.test :as t]))
 
 (deftest somewhat-less-wat
+  ; yes, CLJS/GClosure compilation warning expected here
   (is (= "{}[]" (+ {} []))))
 
 (deftest javascript-allows-div0

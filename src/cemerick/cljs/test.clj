@@ -474,10 +474,10 @@ explicit test context, e.g. (is -test-ctx (some-assertion))."
   {:added "1.1"}
   [string & body]
   `(try
-     (swap! (test-context) update-in [::test-contexts] conj ~string)
+     (swap! (:test-env (test-context)) update-in [::test-contexts] conj ~string)
      ~@body
      (finally
-       (swap! (test-context) update-in [::test-contexts] pop))))
+       (swap! (:test-env (test-context)) update-in [::test-contexts] pop))))
 
 ;;; DEFINING TESTS
 

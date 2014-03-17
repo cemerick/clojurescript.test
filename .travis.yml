@@ -1,6 +1,6 @@
 language: clojure
 lein: lein2
-script: "lein2 install; lein2 cleantest"
+script: "lein2 do clean, cljx once, install; lein2 cleantest"
 jdk:
   - openjdk7
   - oraclejdk7

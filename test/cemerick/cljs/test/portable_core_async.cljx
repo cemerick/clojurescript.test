@@ -6,7 +6,7 @@
                    [cljs.core.async :as async :refer (>! <!)])
   #+cljs (:require-macros [cemerick.cljs.test :refer (is deftest run-tests
                                                          block-or-done with-test-ctx)]
-                          [cljs.core.async.macros :refer (go go-loop alts!)]))
+                          [cljs.core.async.macros :refer (go go-loop)]))
 
 (defn- other-fn
   []

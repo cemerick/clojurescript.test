@@ -1,11 +1,11 @@
-(defproject com.cemerick/clojurescript.test "0.2.3-SNAPSHOT"
+(defproject com.cemerick/clojurescript.test "0.2.3"
   :description "Port of clojure.test targeting ClojureScript."
   :url "http://github.com/cemerick/clojurescript.test"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
   :dependencies [[org.clojure/clojure "1.5.1"]
-                 [org.clojure/clojurescript "0.0-1934"]]
+                 [org.clojure/clojurescript "0.0-2014"]]
 
   :plugins [[lein-cljsbuild "1.0.2"]]
 
@@ -64,7 +64,7 @@
                       :plugins [[com.cemerick/austin "0.1.3"]]}
              ; self-reference and chained `lein install; lein test` invocation
              ; needed to use the project as its own plugin. Leiningen :-(
-             :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.2.3-SNAPSHOT"]]}]}
+             :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.2.3"]]}]}
 
   :aliases  {"cleantest" ["with-profile" "self-plugin:self-plugin,latest"
                           "do" "clean," "test," "cljsbuild" "test"]

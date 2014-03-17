@@ -16,7 +16,7 @@ clojurescript.test is available in Maven Central. Add it to your **`:plugins`**
 in your Leiningen `project.clj`:
 
 ```clojure
-[com.cemerick/clojurescript.test "0.2.2"]
+[com.cemerick/clojurescript.test "0.2.3"]
 ```
 
 (clojurescript.test is actually a project dependency _and_ a Leiningen plugin;
@@ -28,7 +28,7 @@ Or, add this to your Maven project's `pom.xml`:
 <dependency>
   <groupId>com.cemerick</groupId>
   <artifactId>clojurescript.test</artifactId>
-  <version>0.2.2</version>
+  <version>0.2.3</version>
 </dependency>
 ```
 
@@ -157,7 +157,7 @@ monty):
 
 ```clojure
 :plugins [[lein-cljsbuild "1.0.0"]
-          [com.cemerick/clojurescript.test "0.2.2"]]
+          [com.cemerick/clojurescript.test "0.2.3"]]
 :cljsbuild {:builds [{:source-paths ["src" "test"]
                       :compiler {:output-to "target/cljs/testable.js"
                                  :optimizations :whitespace
@@ -183,10 +183,23 @@ arbitrary JavaScript expressions (useful for e.g. configuring runtime test
 properties...see the subsection below on using this capability, especially in
 conjunction with advanced compilation).
 
+clojurescript.test bundles test runner scripts for various environments
+(currently, phantomjs, node.js and rhino).  As long as you add
+clojurescript.test to your `project.clj` as a `:plugin`, then it will replace
+any occurrences of `:runner`, `:node-runner` and `:rhino-runner` in your
+`:test-commands` vectors with the path to the corresponding test runner script.
+
+_Outside_ of the `:test-commands` vector in your `:cljsbuild` configuration,
+clojurescript.test will replace _namespaced_ corollaries to these test runner
+keywords (`:cljs.test/runner`, `:cljs.test/node-runner`, and
+`:cljs.test/rhino-runner`). This allows you to have paths to clojurescript.test
+runner scripts injected anywhere into your `project.clj` you like.
 
 ##### Node.js
-To run your tests with [node.js](http://nodejs.org/) instead of phantomjs, just change the
-executable name and the `:runner` keyword in your `:test-commands` vectors like so:
+
+To run your tests with [node.js](http://nodejs.org/) instead of phantomjs, just
+change the executable name and the `:runner` keyword in your `:test-commands`
+vectors like so:
 
 ```
 :test-commands {"unit-tests" ["node" :node-runner
@@ -194,23 +207,25 @@ executable name and the `:runner` keyword in your `:test-commands` vectors like 
                              ]}
 ```
 
-**Note that you must compile your ClojureScript code with
-`:optimizations :advanced` to run it on node.js.**
+**Note that you must compile your ClojureScript code with `:advanced` or
+  `:simple` `:optimizations to run it on node.js.**
 
 ##### Rhino
-To run your tests with [rhino](https://developer.mozilla.org/en/docs/Rhino), change the executable name and the `:runner` keyword in your `:test-commands` vectors like so:
+
+To run your tests with [rhino](https://developer.mozilla.org/en/docs/Rhino),
+change the executable name and the `:runner` keyword in your `:test-commands`
+vectors like so:
+
 ```
 :test-commands {"unit-tests" ["rhino" "-opt" "-1" :rhino-runner
                               ; extra code/files here...
                              ]}
 ```
-Note that rhino doesn't support any HTML or DOM related functions and objects so it can be used mainly for business-only logic or you have to mock all DOM functions by yourself.
 
-clojurescript.test bundles test runner scripts for various environments
-(currently, phantomjs, node.js and rhino).  As long as you add clojurescript.test to
-your `project.clj` as a `:plugin`, then it will replace any occurrences of
-`:runner`, `:node-runner` and `:rhino-runner` in your `:test-commands` vectors with the path to
-the corresponding test runner script.
+Note that rhino doesn't support any HTML or DOM related functions and objects so
+it can be used mainly for business-only logic or you have to mock all DOM
+functions by yourself.
+
 
 **Wanted: runners for other JavaScript environments, e.g. XUL, the
 headed browsers of all sorts, etc**

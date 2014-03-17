@@ -1,5 +1,13 @@
 ## [clojurescript.test](http://github.com/cemerick/clojurescript.test) changelog
 
+### [`0.2.3`](https://github.com/cemerick/clojurescript.test/issues?milestone=6&page=1&state=closed)
+
+* clojurescript.test now ships with a runner for the Rhino JavaScript
+  environment (gh-42).
+* _Namespaced_ test runner keywords will now be replaced throughout
+  `project.clj` maps with paths to the
+  corresponding test runner scripts (gh-26)
+
 ### [`0.2.2`](https://github.com/cemerick/clojurescript.test/issues?milestone=4&page=1&state=closed)
 
 * clojurescript.test now supports node.js via a new test runner (`:node-runner`

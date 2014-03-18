@@ -226,10 +226,6 @@ Note that rhino doesn't support any HTML or DOM related functions and objects so
 it can be used mainly for business-only logic or you have to mock all DOM
 functions by yourself.
 
-
-**Wanted: runners for other JavaScript environments, e.g. XUL, the
-headed browsers of all sorts, etc**
-
 All test runner scripts load the output of the ClojureScript compilation, run
 all of the tests found therein, reports on them, and fails the build if
 necessary.
@@ -293,7 +289,7 @@ assertion:
   (let [now #(.getTime (js/Date.))
         t (now)]
     (js/setTimeout
-	  (fn [] (is >= (now) (+ t 2000)))
+	  (fn [] (is (>= (now) (+ t 2000))))
       2000)))
 ```
 
@@ -319,25 +315,222 @@ Modifying this example as follows will yield useful/correct behaviour:
         t (now)]
     (js/setTimeout
 	  (fn []
-	    (is >= (now) (+ t 2000))
+	    (is (>= (now) (+ t 2000)))
 		(done))
       2000)))
 ```
 
-TODO
+Compared to the first example:
 
-Add bits about:
+1. This test will be run after any synchronous tests in the same namespace that are
+   included in the current test run.
+2. Control exiting the lexical scope of `deftest` will have no effect upon the
+   wider test run (compared to synchronous tests, the "completion" of which
+   cause the next test in a run to be started).
+3. When the `setTimeout` callback is invoked, the assertion therein will be run,
+   and properly attributed to the `timeout` test.
+4. The `(done)` call will close the `timeout` test context, and start the next
+   test in the run.
 
-* test contexts, -test-ctx, with-test-ctx, explicit is arity
-* cemerick.cljs.test/done*, stop
-* more changes to runtime bits
-* core.async-specific example, Clojure portability via block-or-done
+Note that you have complete control over when a test is done; the `setTimeout`
+callback above could just as well spin off another `setTimeout` call (or use any
+other callback-based API), or send or
+block on a core.async channel, etc.
+
+If you _don't_ explicitly close a test's context via `(done)`, the
+clojurescript.test test runner **will never move on to the next test**, and your
+test run will be permanently stalled.  You can unwedge yourself from this
+situation at the REPL in a couple of different ways, see
+[#canceling-asynchronous-tests]("Canceling asynchronous tests").
+
+The rest of this section will dig into the finer details of using the
+asynchronous testing facilities.
+
+#### Test contexts
+
+Each test defined by clojurescript.test carries its own _test context_.  This is
+defined implicitly by `deftest` and other test-creation macros.  The body of
+each test is also wrapped within a `cemerick.cljs.test/with-test-ctx` form.
+This macro does a couple of things:
+
+* It implicitly binds the test context provided to it to `-test-ctx` within its
+  scope.
+* If the test context is asynchronous (i.e. the corresponding `deftest` was
+  marked with `^:async` metadata), then `with-test-ctx` will wrap any containing
+  body of code with a `try/catch` form that will call `(done)` with any error thrown in the
+  course of the body's execution.  This ensures that the test context associated
+  with an asynchronous test that fails with an exception is automatically
+  closed, starting the next test.
+
+The `is` assertion macro will pick up the anaphoric `-test-ctx` binding
+automatically when provided with one or two arguments (the form to
+evaluate/test, and an optional message).  Alternatively, you can explicitly pass
+a test context to `is`.
+
+Putting this all together allows you to define asynchronous tests that use
+common functions that contain asynchronous processing and/or assertions, passing
+the test context around explicitly in order to properly tie test results to the
+"source" tests.  For example, here's the example from before, refactored to put
+the asynchronous call and assertion in a helper function:
+
+```clojure
+(ns async-example
+  (:require-macros [cemerick.cljs.test :refer (is deftest done with-test-ctx)])
+  (:require [cemerick.cljs.test :as t]))
+
+(defn- timeout-helper
+  [test-context delay]
+  (with-test-ctx test-context
+    (let [now #(.getTime (js/Date.))
+        t (now)]
+      (js/setTimeout
+	    (fn []
+	      (is (>= (now) (+ t delay)))
+	  	  (done))
+        delay))))
+
+(deftest ^:async timeout
+  (timeout-helper 2000))
+```
+
+Because `is` and `done` are within `with-test-ctx`'s lexical scope, they'll pick
+up the implicit test context binding automatically.
+
+Alternatively, you could write `timeout-helper` like so, always passing the test
+context explicitly:
+
+```clojure
+(defn- timeout-helper
+  [test-context delay]
+  (let [now #(.getTime (js/Date.))
+        t (now)]
+    (js/setTimeout
+      (fn []
+        (is test-context (>= (now) (+ t delay))
+		  "an assertion message is required when explicitly passing test context to `is`")
+        (done test-context))
+      delay)))
+```
+
+A final variation is to establish the `-test-ctx` binding that `is` and `done`
+look for yourself:
+
+```clojure
+(defn- timeout-helper
+  [-test-ctx delay]
+  (let [now #(.getTime (js/Date.))
+        t (now)]
+    (js/setTimeout
+      (fn []
+        (is (>= (now) (+ t delay)))
+        (done))
+      delay)))
+```
+
+This is somewhat less verbose than other options, but necessitates very careful
+naming of `-test-ctx` (if you call `done` or `done*` without a test context,
+you'll have a bad time), and does not provide the asynchronous error-handling
+benefits of `with-test-ctx`.
+
+#### Reporting errors
+
+`with-test-ctx` will automatically catch and report errors that occur in
+asynchronous tests.  However, if you're not using `with-test-ctx`, or want/need
+to catch certain errors manually, you can report them via the `done` macro
+(e.g. `(done error)`) if you are nevertheless within a `with-test-ctx` body, or
+via the `done*` function (e.g. `(done* test-context error)`).  As with any other
+`done` invocation, this will close the test context and start the next test in
+the run.
+
+#### core.async
+
+You can use all of the facilities described here to test core.async code just as
+you would test callback-based APIs of all sorts. Under the covers, the
+asynchrony provided by core.async in ClojureScript is also mediated by
+callbacks, so all the same semantics apply: declare your tests to be
+asynchronous via the `^:async` metadata, and be sure to call `(done)` one way or
+the other when each test's context should be closed.
+
+Here's an example of core.async (and a profligate use of `go` blocks) used in
+conjunction with clojurescript.test, pulled from clojurescript.test's own test
+suite:
+
+```clojure
+(deftest ^:async core-async-test
+  (let [inputs (repeatedly 10000 #(go 1))]
+    (go (is (= 10000 (<! (reduce
+                           (fn [sum in]
+                             (go (+ (<! sum) (<! in))))
+                           inputs))))
+      (done))))
+```
+
+##### Portably testing core.async code with clojurescript.test and clojure.test
+
+Clojure's clojure.test does not provide any control over test lifecycle to accommodate
+assertions being performed in asynchronously-executed code paths, i.e. there is
+no `done` to call when we want a test to be considered complete.  To work around
+this, clojurescript.test includes `cemerick.cljs.test/block-or-done` macro, which enables one to test code that uses the only
+Clojure/ClojureScript portable asynchrony option, core.async.  In Clojure, `block-or-done`
+will block the completion of the enclosing clojure.test `deftest` until the
+provided channel is yields a value; in ClojureScript, `block-or-done` will call
+`(done)` when the provided channel yields a value.
+
+This allows us to write the above core.async-using test in a portable way, that
+will work on either Clojure or ClojureScript:
+
+```clojure
+(deftest ^:async pointless-counting
+  (let [inputs (repeatedly 10000 #(go 1))
+        complete (async/chan)]
+    (go (is (= 10000 (<! (reduce
+                           (fn [sum in]
+                             (go (+ (<! sum) (<! in))))
+                           inputs))))
+        (>! complete true)) 
+    (block-or-done complete)))
+```
+
+#### Canceling asynchronous tests
+
+Every function or macro that starts a clojurescript.test test run
+(e.g. `run-tests`, `test-ns`, etc) will return a map of the test environment
+that summarizes the results of the _synchronous_ tests included in that run.
+Within that environment's map is an `:async` entry, the value of which is an
+atom containing another test environment, dedicated to the asynchronous portion
+of the test run.
+
+##### In ClojureScript
+
+If you run a set of tests which appear to have wedged on the asynchronous
+portion (perhaps because one of your tests failed to close its testing context
+via `(done)` or `(done* ...)`, or maybe a bug is causing a test run to carry on
+longer than desired), you can cancel the further processing of the test
+run by calling `(cemerick.cljs.test/stop ...)`, passing the value of the
+`:async` slot of the top-level test environment described above.  This will not
+cancel any outstanding asynchronous processing your tests have provoked in the
+JavaScript environment (e.g. callbacks, pending core.async puts or takes, etc),
+but it will stop the test run corresponding to the test environment from
+continuing if and when the wedged asynchronous test _does_ close its testing
+context.
+
+##### In Clojure
+
+Assuming your asynchronous tests are using `block-or-done` (discussed above),
+test running functions and macros will block until all tests are complete.  If
+you suspect those tests will not complete, the only solution to this is to
+interrupt the blocked REPL evaluation, supported by various nREPL clients and
+tools.
 
 ## Limitations
 
 * Bug: filenames and line numbers are not currently reported properly.
 
 ## Differences from `clojure.test`
+
+TODO the differences noted here are out of date, and do not account for the
+additional differences (esp. w.r.t. the test runtime maintenance bits)
+introduced by supporting asynchronous testing starting in 0.3.0.
 
 * docstrings bear little to no semblence to the library's actual operation
 * Namespace test hooks must be defined using the `deftesthook` macro

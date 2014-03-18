@@ -341,7 +341,7 @@ If you _don't_ explicitly close a test's context via `(done)`, the
 clojurescript.test test runner **will never move on to the next test**, and your
 test run will be permanently stalled.  You can unwedge yourself from this
 situation at the REPL in a couple of different ways, see
-[#canceling-asynchronous-tests]("Canceling asynchronous tests").
+["Canceling asynchronous tests"](#canceling-asynchronous-tests).
 
 The rest of this section will dig into the finer details of using the
 asynchronous testing facilities.

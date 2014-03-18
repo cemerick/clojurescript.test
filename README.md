@@ -268,6 +268,70 @@ touched `window`, but that name is undefined in node.js; using `this` when
 setting and looking up the test configuration value makes it so that the same
 code (and configuration) can be used in any test environment.  
 
+### Asynchronous testing
+
+Problem: various operations in JavaScript are necessarily asynchronous, from
+things as simple as DOM event callbacks to more involved activity like querying
+or modifying IndexedDB databases or interacting with core.async channels.   This
+means that the testing "context" may have moved on (and your
+JavaScript environment's execution may have completed entirely) before your
+callbacks/`go` blocks/etc have fired/completed…a big problem if those
+asynchronous constructs contained assertions.
+
+Starting with version `0.3.0`, clojurescript.test provides ways to explicitly
+control when each test is complete.
+
+First, an example of a test that will not perform the intended (asynchronous)
+assertion:
+
+```clojure
+(ns async-example
+  (:require-macros [cemerick.cljs.test :refer (is deftest)])
+  (:require [cemerick.cljs.test :as t]))
+  
+(deftest timeout
+  (let [now #(.getTime (js/Date.))
+        t (now)]
+    (js/setTimeout
+	  (fn [] (is >= (now) (+ t 2000)))
+      2000)))
+```
+
+In the best case, the `is` assertion's results will be attributed to some other
+test; in the worst case, the JavaScript environment will have exited before the
+`setTimeout` callback is scheduled to be invoked, and the asynchronous assertion
+will never be run at all.
+
+Modifying this example as follows will yield useful/correct behaviour:
+
+1. Add `^:async` metadata to the `deftest` name.
+2. You must call `(done)` using the asynchronous `deftest`'s testing context in
+   order for that test to finish, and cause the next test in the current run to
+   start.
+
+```clojure
+(ns async-example
+  (:require-macros [cemerick.cljs.test :refer (is deftest done)])
+  (:require [cemerick.cljs.test :as t]))
+
+(deftest ^:async timeout
+  (let [now #(.getTime (js/Date.))
+        t (now)]
+    (js/setTimeout
+	  (fn []
+	    (is >= (now) (+ t 2000))
+		(done))
+      2000)))
+```
+
+TODO
+
+Add bits about:
+
+* test contexts, -test-ctx, with-test-ctx, explicit is arity
+* cemerick.cljs.test/done*, stop
+* more changes to runtime bits
+* core.async-specific example, Clojure portability via block-or-done
 
 ## Limitations
 
@@ -315,14 +379,16 @@ your cljsc/lein-cljsbuild configuration.
 
 ## Need Help?
 
-Send a message to the [ClojureScript](http://groups.google.com/group/clojurescript)
-mailing list, or ping `cemerick` on freenode irc or
-[twitter](http://twitter.com/cemerick) if you have questions
-or would like to contribute patches.
+Send a message to the
+[ClojureScript](http://groups.google.com/group/clojurescript) mailing list, or
+ping `cemerick` on freenode irc or [twitter](http://twitter.com/cemerick) if you
+have questions or would like to contribute patches.
 
 ## License
 
-Copyright © 2013 Chas Emerick and other contributors.  Known contributors to `clojure.test` (which was the initial raw ingredient for this project) are:
+Copyright © 2013 Chas Emerick and other contributors.  Known contributors to
+`clojure.test` (which was the initial raw ingredient for this project) at the
+time of this project's inception were:
 
 * Stuart Sierra
 * Rich Hickey

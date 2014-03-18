@@ -1,10 +1,10 @@
 (ns cemerick.cljs.test.portable-core-async
   #+clj (:require [clojure.test :refer (is deftest run-tests)]
                   [clojure.core.async :as async :refer (go go-loop >! <! <!!)]
-                  [cemerick.cljs.test :refer (done with-test-ctx block-or-done)])
+                  [cemerick.cljs.test :refer (with-test-ctx block-or-done)])
   #+cljs (:require cemerick.cljs.test
                    [cljs.core.async :as async :refer (>! <!)])
-  #+cljs (:require-macros [cemerick.cljs.test :refer (is deftest run-tests
+  #+cljs (:require-macros [cemerick.cljs.test :refer (is deftest run-tests done
                                                          block-or-done with-test-ctx)]
                           [cljs.core.async.macros :refer (go go-loop)]))
 
@@ -15,6 +15,18 @@
 (deftest synchronous-test
   (other-fn))
 
+#+cljs
+(deftest ^:async core-async-test
+  (let [inputs (repeatedly 10000 #(go 1))]
+    (go (is (= 10000 (<! (reduce
+                           (fn [sum in]
+                             (go (+ (<! sum) (<! in))))
+                           inputs))))
+      (done))))
+
+; exactly the same as above, but uses block-or-done and a control channel to
+; signal test completion instead of directly calling (done) (which does not
+; exist in clojure.test)
 (deftest ^:async pointless-counting
   (let [inputs (repeatedly 10000 #(go 1))
         complete (async/chan)]

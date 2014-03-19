@@ -1,5 +1,17 @@
 ## [clojurescript.test](http://github.com/cemerick/clojurescript.test) changelog
 
+### [`0.3.0`](https://github.com/cemerick/clojurescript.test/issues?milestone=5&page=1&state=closed)
+
+* clojurescript.test now supports testing asynchronous code.  See the
+  [relevant documentation](https://github.com/cemerick/clojurescript.test#asynchronous-testing)
+  for details. (gh-34)
+* Loading a ClojureScript file (via `load-file` or an nREPL load file
+  command/operation) now properly replaces same-named tests that already
+  existed. (gh-13)
+* clojurescript.test is now always added to your project as a test-scoped
+  dependency (prevents pollution of downstream dependency graphs when
+  clojurescript.test is not installed in the `:dev` or `:test` profiles) (gh-52)
+
 ### [`0.2.3`](https://github.com/cemerick/clojurescript.test/issues?milestone=6&page=1&state=closed)
 
 * clojurescript.test now ships with a runner for the Rhino JavaScript

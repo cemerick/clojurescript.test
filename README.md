@@ -16,7 +16,7 @@ clojurescript.test is available in Maven Central. Add it to your **`:plugins`**
 in your Leiningen `project.clj`:
 
 ```clojure
-[com.cemerick/clojurescript.test "0.3.0-SNAPSHOT"]
+[com.cemerick/clojurescript.test "0.3.0"]
 ```
 
 (clojurescript.test is actually a project dependency _and_ a Leiningen plugin;
@@ -28,7 +28,7 @@ Or, add this to your Maven project's `pom.xml`:
 <dependency>
   <groupId>com.cemerick</groupId>
   <artifactId>clojurescript.test</artifactId>
-  <version>0.3.0-SNAPSHOT</version>
+  <version>0.3.0</version>
 </dependency>
 ```
 
@@ -530,7 +530,7 @@ tools.
 
 TODO the differences noted here are out of date, and do not account for the
 additional differences (esp. w.r.t. the test runtime maintenance bits)
-introduced by supporting asynchronous testing starting in 0.3.0.
+introduced by supporting asynchronous testing starting in `0.3.0`.
 
 * docstrings bear little to no semblence to the library's actual operation
 * Namespace test hooks must be defined using the `deftesthook` macro

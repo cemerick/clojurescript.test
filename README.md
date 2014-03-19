@@ -1,4 +1,4 @@
-# clojurescript.test [![Build Status](https://travis-ci.org/cemerick/clojurescript.test.png?branch=develop/0.3.x)](https://travis-ci.org/cemerick/clojurescript.test)
+# clojurescript.test [![Build Status](https://travis-ci.org/cemerick/clojurescript.test.png?branch=master)](https://travis-ci.org/cemerick/clojurescript.test)
 
 A maximal port of `clojure.test` to ClojureScript.
 

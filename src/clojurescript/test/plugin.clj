@@ -39,8 +39,10 @@ associating the runner keyword with the corresponding temp file"
 1. Modify all :cljsbuild :test-command vectors, swapping :runner, :node-runner,
   :nodejs-runner and :rhino-runner keywords for the string path to the
   corresponding packaged script.
-2. Add [com.cemerick/clojurescript-test \"CURRENT_VERSION\"] as a project
-  dependency."
+2. Add [com.cemerick/clojurescript-test \"CURRENT_VERSION\"] as a test-scoped
+project dependency (equivalent to the user always having the plugin installed in
+the :dev profile, and so won't affect the primary dependency graph of downstream
+projects)."
   [project]
   (let [runners [[:runner "runner.js"]
                  [:node-runner "node_runner.js"]
@@ -54,7 +56,7 @@ associating the runner keyword with the corresponding temp file"
     (-> project
         (update-in [:dependencies]
                    (fnil into [])
-                   [['com.cemerick/clojurescript.test version]])
+                   [['com.cemerick/clojurescript.test version :scope "test"]])
         (update-in [:cljsbuild :test-commands]
                    (partial postwalk-replace runner-paths))
         ((partial postwalk-replace namespaced-runner-paths)))))

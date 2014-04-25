@@ -23,38 +23,54 @@
               :test-commands {; PhantomJS tests
                               "phantom-whitespace" ["phantomjs" :runner
                                                     "window.literal_js_was_evaluated=true"
+                                                    "--test-data=test/cemerick/cljs/test/data_files"
+                                                    "--test-data=test/cemerick/cljs/test/single_data_file.txt"
                                                     "target/cljs/whitespace.js"
                                                     "test/cemerick/cljs/test/extra_test_command_file.js"]
                               "phantom-simple" ["phantomjs" :runner
                                                 "window.literal_js_was_evaluated=true"
+                                                "--test-data=test/cemerick/cljs/test/data_files"
+                                                "--test-data=test/cemerick/cljs/test/single_data_file.txt"
                                                 "target/cljs/simple.js"
                                                 "test/cemerick/cljs/test/extra_test_command_file.js"]
                               "phantom-advanced" ["phantomjs" :runner
                                                   "window.literal_js_was_evaluated=true"
+                                                  "--test-data=test/cemerick/cljs/test/data_files"
+                                                  "--test-data=test/cemerick/cljs/test/single_data_file.txt"
                                                   "target/cljs/advanced.js"
                                                   "test/cemerick/cljs/test/extra_test_command_file.js"]
 
                               ; Rhino tests
                               "rhino-whitespace" ["rhino" "-opt" "-1" :rhino-runner
                                                   "this.literal_js_was_evaluated=true "
+                                                  "--test-data=test/cemerick/cljs/test/data_files"
+                                                  "--test-data=test/cemerick/cljs/test/single_data_file.txt"
                                                   "target/cljs/whitespace.js"
                                                   "test/cemerick/cljs/test/extra_test_command_file.js"]
                               "rhino-simple" ["rhino" "-opt" "-1" :rhino-runner
                                                   "this.literal_js_was_evaluated=true"
+                                                  "--test-data=test/cemerick/cljs/test/data_files"
+                                                  "--test-data=test/cemerick/cljs/test/single_data_file.txt"
                                                   "target/cljs/simple.js"
                                                   "test/cemerick/cljs/test/extra_test_command_file.js"]
                               "rhino-advanced" ["rhino" "-opt" "-1" :rhino-runner
                                                   "this.literal_js_was_evaluated=true"
+                                                  "--test-data=test/cemerick/cljs/test/data_files"
+                                                  "--test-data=test/cemerick/cljs/test/single_data_file.txt"
                                                   "target/cljs/advanced.js"
                                                   "test/cemerick/cljs/test/extra_test_command_file.js"]
 
                               ; node tests
                               "node-simple" ["node" :node-runner
                                              "this.literal_js_was_evaluated=true"
+                                             "--test-data=test/cemerick/cljs/test/data_files"
+                                             "--test-data=test/cemerick/cljs/test/single_data_file.txt"
                                              "target/cljs/simple.js"
                                              "test/cemerick/cljs/test/extra_test_command_file.js"]
                               "node-advanced" ["node" :node-runner
                                                "this.literal_js_was_evaluated=true"
+                                               "--test-data=test/cemerick/cljs/test/data_files"
+                                               "--test-data=test/cemerick/cljs/test/single_data_file.txt"
                                                "target/cljs/advanced.js"
                                                "test/cemerick/cljs/test/extra_test_command_file.js"]}}
 

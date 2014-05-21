@@ -29,11 +29,35 @@ var setTimeout, clearTimeout, setInterval, clearInterval;
 
 })()
 
+var haveCljsTest = function () {
+    return (typeof cemerick !== "undefined" &&
+        typeof cemerick.cljs !== "undefined" &&
+        typeof cemerick.cljs.test !== "undefined" &&
+        typeof cemerick.cljs.test.run_all_tests === "function");
+};
+
+var failIfCljsTestUndefined = function () {
+    if (!haveCljsTest()) {
+        var messageLines = [
+            "",
+            "ERROR: cemerick.cljs.test was not required.",
+            "",
+            "You can resolve this issue by ensuring [cemerick.cljs.test] appears",
+            "in the :require clause of your test suite namespaces.",
+            "Also make sure that your build has actually included any test files.",
+            ""
+        ];
+        print(messageLines.join("\n"));
+        java.lang.System.exit(1);
+    }
+}
+
 arguments.forEach(function (arg) {
     if (new java.io.File(arg).exists()) {
         try {
             load(arg);
         } catch (e) {
+            failIfCljsTestUndefined();
             print("Error in file: \"" + arg + "\"");
             print(e);
         }
@@ -46,6 +70,8 @@ arguments.forEach(function (arg) {
         }
     }
 });
+
+failIfCljsTestUndefined(); // check this before trying to call set_print_fn_BANG_
 
 cemerick.cljs.test.set_print_fn_BANG_(function(x) {
     // since console.log *itself* adds a newline

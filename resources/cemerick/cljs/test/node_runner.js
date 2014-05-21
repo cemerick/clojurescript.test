@@ -2,6 +2,32 @@ var path = require("path"),
   fs = require("fs"),
   args = process.argv.slice(2);
 
+var haveCljsTest = function () {
+    return (typeof cemerick !== "undefined" &&
+        typeof cemerick.cljs !== "undefined" &&
+        typeof cemerick.cljs.test !== "undefined" &&
+        typeof cemerick.cljs.test.run_all_tests === "function");
+};
+
+var failIfCljsTestUndefined = function () {
+    if (!haveCljsTest()) {
+        var messageLines = [
+            "",
+            "ERROR: cemerick.cljs.test was not required.",
+            "",
+            "You can resolve this issue by ensuring [cemerick.cljs.test] appears",
+            "in the :require clause of your test suite namespaces.",
+            "Also make sure that your build has actually included any test files.",
+            "",
+            "Also remember that Node.js can be only used with simple/advanced ",
+            "optimizations, not with none/whitespace.",
+            ""
+        ];
+        console.error(messageLines.join("\n"));
+        process.exit(1);
+    }
+}
+
 args.forEach(function (arg) {
     var file = path.join(process.cwd(), arg);
     if (fs.existsSync(file)) {
@@ -10,6 +36,7 @@ args.forEach(function (arg) {
         // top-level scope, not the module
         eval("(function () {" + fs.readFileSync(file, {encoding: "UTF-8"}) + "})()");
       } catch (e) {
+        failIfCljsTestUndefined();
         console.log("Error in file: \"" + file + "\"");
         console.log(e);
       }
@@ -22,6 +49,8 @@ args.forEach(function (arg) {
       }
     }
 });
+
+failIfCljsTestUndefined(); // check this before trying to call set_print_fn_BANG_
 
 cemerick.cljs.test.set_print_fn_BANG_(function(x) {
     // since console.log *itself* adds a newline 

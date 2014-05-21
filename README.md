@@ -168,6 +168,10 @@ monty):
                                           "test/cemerick/cljs/test/extra_test_command_file.js"]}}
 ```
 
+(<strong>Note that the `extra_command_file.js` reference and `literal_js_was_evaluated`
+expression are _examples_, and not necessary for your usage. Please continue
+reading below.</strong>)
+
 Everything here is fairly basic, except for the `:test-commands` entries, which
 describes the shell command that will be executed when lein-cljsbuild's test
 phase is invoked (either via `lein cljsbuild test`, or just `lein test` because

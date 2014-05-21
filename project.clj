@@ -1,4 +1,4 @@
-(defproject com.cemerick/clojurescript.test "0.3.1-SNAPSHOT"
+(defproject com.cemerick/clojurescript.test "0.3.1"
   :description "Port of clojure.test targeting ClojureScript."
   :url "http://github.com/cemerick/clojurescript.test"
   :license {:name "Eclipse Public License"
@@ -68,7 +68,7 @@
   :profiles {:latest {:dependencies [[org.clojure/clojure "1.6.0-alpha3"]
                                      [org.clojure/clojurescript "0.0-2138"]]}
              :dev {:dependencies [[org.clojure/core.async "0.1.267.0-0d7780-alpha"]]
-                   :plugins [[lein-cljsbuild "1.0.1"]
+                   :plugins [[lein-cljsbuild "1.0.3"]
                              [com.keminglabs/cljx "0.3.2"]
                              [com.cemerick/austin "0.1.4-SNAPSHOT"]]}
              ; self-reference and chained `lein install; lein test` invocation

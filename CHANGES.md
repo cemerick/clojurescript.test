@@ -1,5 +1,12 @@
 ## [clojurescript.test](http://github.com/cemerick/clojurescript.test) changelog
 
+### [`0.3.1`](https://github.com/cemerick/clojurescript.test/issues?milestone=7&page=1&state=closed)
+
+* The test runners now provide a useful message if `cemerick.cljs.test` is not
+  found in the JavaScript environment after loading compilation output,
+  indicating that it is not being required by any ClojureScript namespaces in
+  the current project. (gh-47)
+
 ### [`0.3.0`](https://github.com/cemerick/clojurescript.test/issues?milestone=5&page=1&state=closed)
 
 * clojurescript.test now supports testing asynchronous code.  See the

@@ -164,6 +164,7 @@ monty):
                                  :pretty-print true}}]
             :test-commands {"unit-tests" ["phantomjs" :runner
                                           "this.literal_js_was_evaluated=true"
+                                          "--test-data=test/cemerick/cljs/test/data_files"
                                           "target/cljs/testable.js"
                                           "test/cemerick/cljs/test/extra_test_command_file.js"]}}
 ```
@@ -185,7 +186,9 @@ value defined elsewhere in the `project.clj`), _or_ paths to other arbitrary
 JavaScript files (useful for injecting external libraries, polyfills, etc), _or_
 arbitrary JavaScript expressions (useful for e.g. configuring runtime test
 properties...see the subsection below on using this capability, especially in
-conjunction with advanced compilation).
+conjunction with advanced compilation), _or_ single files or entire directories
+whose content you wish to load into the environment (as a string), via the
+`--test-data` argument.
 
 clojurescript.test bundles test runner scripts for various environments
 (currently, phantomjs, node.js and rhino).  As long as you add
@@ -266,7 +269,21 @@ ensure that the property name will not be renamed/obfuscated by Google Closure
 when run with `:advanced` optimizations.  Prior examples of this practice
 touched `window`, but that name is undefined in node.js; using `this` when
 setting and looking up the test configuration value makes it so that the same
-code (and configuration) can be used in any test environment.  
+code (and configuration) can be used in any test environment.
+
+#### Reading files via the `--test-data` argument in `:test-commands`
+
+You may have functions that work on textual data (coming from the wire, a user
+input or from a file upload). To facilitate tests, it is often useful to read
+test input from local files. However, browser environments currently don't
+provide a standard way to do this.
+
+To help with this, you can add a `--test-data` argument to your `:test-commands`.
+This argument can then take the path to a single file or a directory (to refer
+to all files within it, non-recursively). All files will then be read by each
+test runner and stored as escaped JavaScript strings within the testing environment.
+You can then get to the contents of any file by using the `cemerick.cljs.test/test-data`
+function, which takes a file path and returns its string value.
 
 ### Asynchronous testing
 

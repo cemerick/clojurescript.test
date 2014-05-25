@@ -50,10 +50,28 @@ var failIfCljsTestUndefined = function () {
         print(messageLines.join("\n"));
         java.lang.System.exit(1);
     }
+};
+
+function loadTestData(p) {
+    var loadFile = function (file) {
+        var str = readFile(file, 'utf8').replace(/[\"\'\\\t\v\b\f\n\r]/gm,"\\$&");
+        eval("(function() {\
+             if (!this.cljs_test_data) this.cljs_test_data = {};\
+             this.cljs_test_data[\"" + file + "\"] = \"" + str + "\"; })()");
+    };
+    var f = new java.io.File(p);
+    if (f.isDirectory()) {
+        f.listFiles().forEach(function(f) {
+            loadFile(f);
+        });
+    } else {
+        loadFile(p);
+    }
 }
 
 arguments.forEach(function (arg) {
-    if (new java.io.File(arg).exists()) {
+   var m = arg.match(/^--test-data=(.*)$/);
+   if (new java.io.File(arg).exists()) {
         try {
             load(arg);
         } catch (e) {
@@ -61,6 +79,8 @@ arguments.forEach(function (arg) {
             print("Error in file: \"" + arg + "\"");
             print(e);
         }
+    } else if (m && m.length > 1) {
+        loadTestData(m[1]);
     } else {
         try {
             eval("(function () {" + arg + "})()");

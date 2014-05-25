@@ -251,6 +251,13 @@ argument immediately, and no watcher will be registered."
   [fixtures]
   (reduce compose-fixtures default-fixture fixtures))
 
+;;; SUPPORTING TEST DATA
+
+(defn test-data [path]
+  "Takes a path for a file loaded via --test-data in the test command.
+   Returns the string corresponding to its contents, if it was read correctly"
+  (aget (this-as this (aget this "cljs_test_data")) path))
+
 ;;; SUPPORTING ASYNC
 
 (defn- async-test?

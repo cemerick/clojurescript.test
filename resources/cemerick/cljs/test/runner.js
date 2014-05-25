@@ -5,9 +5,35 @@ var p = require('webpage').create();
 var fs = require('fs');
 var sys = require('system');
 
+function loadTestData(path) {
+    
+  var loadFile = function (file) {
+    var str = fs.read(file).replace(/[\"\'\\\t\v\b\f\n\r]/gm,"\\$&");
+    p.evaluateJavaScript("(function() {\
+                         if (!this.cljs_test_data) this.cljs_test_data = {};\
+                         this.cljs_test_data[\"" + file + "\"] = \"" + str + "\"; })");
+  };
+  
+  if (fs.isDirectory(path)) {
+    fs.list(path).forEach(function(f) {
+      var lf = path + fs.separator + f;
+      if (fs.isFile(lf)) {
+        loadFile(lf);
+      }
+    });
+  } else {
+    loadFile(path);
+  }
+}
+
+
 for (var i = 1; i < sys.args.length; i++) {
+    var m = sys.args[i].match(/^--test-data=(.*)$/);
+
     if (fs.exists(sys.args[i])) {
         if (!p.injectJs(sys.args[i])) throw new Error("Failed to inject " + sys.args[i]);
+    } else if (m && m.length > 1) {
+        loadTestData(m[1]);
     } else {
         p.evaluateJavaScript("(function () { " + sys.args[i] + ";" + " })");
     }

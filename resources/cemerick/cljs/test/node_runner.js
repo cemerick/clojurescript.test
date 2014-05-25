@@ -26,10 +26,32 @@ var failIfCljsTestUndefined = function () {
         console.error(messageLines.join("\n"));
         process.exit(1);
     }
+};
+
+function loadTestData(p) {
+    
+    var loadFile = function (file) {
+        var str = fs.readFileSync(file, {encoding: 'UTF-8'}).replace(/[\"\'\\\t\v\b\f\n\r]/gm,"\\$&");
+        eval("(function() {\
+             if (!this.cljs_test_data) this.cljs_test_data = {};\
+             this.cljs_test_data[\"" + file + "\"] = \"" + str + "\"; })()");
+    };
+    
+    if (fs.statSync(p).isDirectory()) {
+        fs.readdirSync(p).forEach(function(f) {
+            var lf = path.join(p, f);
+            if (fs.statSync(lf).isFile()) {
+                loadFile(lf);
+            }
+        });
+    } else {
+        loadFile(p);
+    }
 }
 
 args.forEach(function (arg) {
-    var file = path.join(process.cwd(), arg);
+    var file = path.join(process.cwd(), arg),
+        m = arg.match(/^--test-data=(.*)$/);
     if (fs.existsSync(file)) {
       try {
         // using eval instead of require here so that `this` is the "real"
@@ -40,13 +62,15 @@ args.forEach(function (arg) {
         console.log("Error in file: \"" + file + "\"");
         console.log(e);
       }
+    } else if (m && m.length > 1) {
+        loadTestData(m[1]);
     } else {
-      try {
-        eval("(function () {" + arg + "})()");
-      } catch (e) {
-        console.log("Could not evaluate expression: \"" + arg + "\"");
-        console.log(e);
-      }
+        try {
+            eval("(function () {" + arg + "})()");
+        } catch (e) {
+            console.log("Could not evaluate expression: \"" + arg + "\"");
+            console.log(e);
+        }
     }
 });
 

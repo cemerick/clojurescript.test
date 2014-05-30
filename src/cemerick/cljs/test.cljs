@@ -199,7 +199,8 @@ argument immediately, and no watcher will be registered."
   (with-test-out test-env
    (println "\nRan" test "tests containing"
             (+ pass fail error) "assertions.")
-   (if-let [^number pending-count
+   (println "Testing complete:" fail "failures," error "errors.")
+   (when-let [^number pending-count
             (and (not (testing-complete? test-env))
                  (->> @(:async  test-env)
                       ((juxt ::remaining ::running))
@@ -208,8 +209,7 @@ argument immediately, and no watcher will be registered."
      (println "Waiting on" pending-count
               (str "asynchronous test"
                    (when (> pending-count 1) "s")
-                   " to complete."))
-     (println "Testing complete:" fail "failures," error "errors."))))
+                   " to complete.")))))
 
 (defmethod report :begin-test-ns [{:keys [ns test-env async] :as m}]
   (with-test-out test-env
@@ -429,11 +429,22 @@ argument immediately, and no watcher will be registered."
 
 ;;; RUNNING TESTS: HIGH-LEVEL FUNCTIONS
 
+(defn- print-summary
+  [env]
+  (do-report (assoc env :type :summary)))
+
+(defn- async-test-summary
+  [test-env]
+  (let [async-test-env (-> test-env :async maybe-deref)
+        tests (-> async-test-env :test)]
+    (when (pos? tests)
+      (print-summary async-test-env))))
+
 (defn- test-summary
   [test-env]
   (let [test-env (maybe-deref test-env)]
-    (do-report (assoc (merge-with + test-env (maybe-deref (:async test-env)))
-                 :type :summary))))
+    (print-summary test-env)
+    (on-testing-complete test-env async-test-summary)))
 
 (defn ^:export run-tests*
   "Runs all tests in the given namespaces; prints results.
@@ -447,7 +458,6 @@ argument immediately, and no watcher will be registered."
     (test-runner-entry-point
      test-env
      (doseq [ns (distinct namespaces)] (test-ns test-env ns))
-     (on-testing-complete test-env test-summary)
      (test-summary test-env))))
 
 (defn ^:export run-all-tests

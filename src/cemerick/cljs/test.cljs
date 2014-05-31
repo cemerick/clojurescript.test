@@ -438,7 +438,7 @@ argument immediately, and no watcher will be registered."
   (let [async-test-env (-> test-env :async maybe-deref)
         tests (-> async-test-env :test)]
     (when (pos? tests)
-      (print-summary async-test-env))))
+      (print-summary (merge-with + test-env async-test-env)))))
 
 (defn- test-summary
   [test-env]

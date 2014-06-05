@@ -47,7 +47,8 @@ projects)."
   (let [runners [[:runner "runner.js"]
                  [:node-runner "node_runner.js"]
                  [:nodejs-runner "node_runner.js"]
-                 [:rhino-runner "rhino_runner.js"]]
+                 [:rhino-runner "rhino_runner.js"]
+                 [:nashorn-runner "nashorn_runner.js"]]
         runner-paths (runner-paths! runners)
         namespaced-runner-paths (->> runner-paths
                                      (map (fn [[k path]]

@@ -60,6 +60,23 @@
                                                   "target/cljs/advanced.js"
                                                   "test/cemerick/cljs/test/extra_test_command_file.js"]
 
+                              ; Nashorn tests
+                              "nashorn-whitespace" ["jrunscript"
+                                                    "-e" "this.literal_js_was_evaluated=true"
+                                                    "-f" :nashorn-runner
+                                                    "target/cljs/whitespace.js"
+                                                    "test/cemerick/cljs/test/extra_test_command_file.js"]
+                              "nashorn-simple" ["jrunscript"
+                                                "-e" "this.literal_js_was_evaluated=true"
+                                                "-f" :nashorn-runner
+                                                "target/cljs/simple.js"
+                                                "test/cemerick/cljs/test/extra_test_command_file.js"]
+                              "nashorn-advanced" ["jrunscript"
+                                                  "-e" "this.literal_js_was_evaluated=true"
+                                                  "-f" :nashorn-runner
+                                                  "target/cljs/advanced.js"
+                                                  "test/cemerick/cljs/test/extra_test_command_file.js"]
+
                               ; node tests
                               "node-simple" ["node" :node-runner
                                              "this.literal_js_was_evaluated=true"

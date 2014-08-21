@@ -34,9 +34,9 @@ args.forEach(function (arg) {
       try {
         // using eval instead of require here so that `this` is the "real"
         // top-level scope, not the module
-        eval("(function () {" + fs.readFileSync(file, {encoding: "UTF-8"}) + "})()");
+        var content = fs.readFileSync(file, {encoding: "UTF-8"});
+        eval("(function () {" + content + "})()");
       } catch (e) {
-        failIfCljsTestUndefined();
         console.log("Error in file: \"" + file + "\"");
         console.log(e);
       }

@@ -5,11 +5,19 @@ var p = require('webpage').create();
 var fs = require('fs');
 var sys = require('system');
 
+var f1 = "(function () { "
+    + "try { ";
+var f2 = "; } catch (err) { e = new Error('";
+var f3 = "' + "
+    + "' is not a file, and evaluating as an expression threw: \"' + "
+    + "err.message + '\"'); throw e; }"
+    + " })";
+
 for (var i = 1; i < sys.args.length; i++) {
     if (fs.exists(sys.args[i])) {
         if (!p.injectJs(sys.args[i])) throw new Error("Failed to inject " + sys.args[i]);
     } else {
-        p.evaluateJavaScript("(function () { " + sys.args[i] + ";" + " })");
+        p.evaluateJavaScript(f1 + sys.args[i] + f2 + sys.args[i] + f3);
     }
 }
 

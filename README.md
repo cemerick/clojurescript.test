@@ -235,7 +235,7 @@ all of the tests found therein, reports on them, and fails the build if
 necessary.
 
 clojurescript.test supports all of Google Closure's compilation modes, including
-`:advanced`.
+`:advanced`, but it does NOT support `:none` cljsbuild optimization option.
 
 #### Configuring tests via JavaScript files/expressions in `:test-commands`
 

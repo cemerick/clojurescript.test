@@ -4,7 +4,7 @@ script: "lein2 do clean, cljx once, install; lein2 cleantest"
 jdk:
   - openjdk7
   - oraclejdk7
-  - openjdk6
+  - oraclejdk8
 before_install:
  - sudo apt-get update -qq
  - sudo apt-get install -qq rhino

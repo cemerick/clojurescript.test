@@ -5,8 +5,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :min-lein-version "2.0.0"
   :test-paths ["target/generated/clj"]
-  :dependencies [[org.clojure/clojure "1.5.1"]
-                 [org.clojure/clojurescript "0.0-2197"]]
+  :dependencies [[org.clojure/clojure "1.6.0"]
+                 [org.clojure/clojurescript "0.0-2411"]]
 
   :cljsbuild {:builds [{:source-paths ["src" "test" "target/generated/cljs"]
                         :compiler {:output-to "target/cljs/whitespace.js"
@@ -65,9 +65,7 @@
                    :output-path "target/generated/cljs"
                    :rules :cljs}]}
   
-  :profiles {:latest {:dependencies [[org.clojure/clojure "1.6.0-alpha3"]
-                                     [org.clojure/clojurescript "0.0-2197"]]}
-             :dev {:dependencies [[org.clojure/core.async "0.1.267.0-0d7780-alpha"]]
+  :profiles {:dev {:dependencies [[org.clojure/core.async "0.1.267.0-0d7780-alpha"]]
                    :plugins [[lein-cljsbuild "1.0.3"]
                              [com.keminglabs/cljx "0.3.2"]
                              [com.cemerick/austin "0.1.4-SNAPSHOT"]]}
@@ -75,7 +73,7 @@
              ; needed to use the project as its own plugin. Leiningen :-(
              :self-plugin [:default {:plugins [[com.cemerick/clojurescript.test "0.3.2-SNAPSHOT"]]}]}
 
-  :aliases  {"cleantest" ["with-profile" "self-plugin:self-plugin,latest"
+  :aliases  {"cleantest" ["with-profile" "self-plugin"
                           "do" "clean," "cljx" "once," "test," "cljsbuild" "test"]
              "release" ["do" "clean," "deploy" "clojars," "deploy" "releases"]}
 

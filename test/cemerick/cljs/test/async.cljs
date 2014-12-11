@@ -36,3 +36,8 @@
 
 (deftest ^:async testing-ctx
   (some-other-fn -test-ctx))
+
+(deftest ^:async foobar
+  (println "FOO")
+  (done))
+

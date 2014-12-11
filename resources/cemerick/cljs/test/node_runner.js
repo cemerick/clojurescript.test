@@ -36,9 +36,9 @@ args.forEach(function (arg) {
         // top-level scope, not the module
         eval("(function () {" + fs.readFileSync(file, {encoding: "UTF-8"}) + "})()");
       } catch (e) {
-        failIfCljsTestUndefined();
         console.log("Error in file: \"" + file + "\"");
         console.log(e);
+        failIfCljsTestUndefined();
       }
     } else {
       try {

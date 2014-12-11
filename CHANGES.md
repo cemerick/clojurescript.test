@@ -1,5 +1,14 @@
 ## [clojurescript.test](http://github.com/cemerick/clojurescript.test) changelog
 
+### [`0.3.2`](https://github.com/cemerick/clojurescript.test/issues?q=milestone%3A0.3.2)
+
+* The nodejs test runner now prints the original error before checking if
+  `cemerick.cljs.test` is available in the JavaScript environment. This helps
+  diagnose compilation/configuration issues (e.g. shebang lines when they
+  shouldn't be present, etc) (gh-68)
+* The test summary is not duplicated if no asynchronous tests are defined
+  (gh-66)
+
 ### [`0.3.1`](https://github.com/cemerick/clojurescript.test/issues?milestone=7&page=1&state=closed)
 
 * The test runners now provide a useful message if `cemerick.cljs.test` is not

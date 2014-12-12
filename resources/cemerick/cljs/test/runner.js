@@ -1,4 +1,4 @@
-// reusable phantomjs script for running clojurescript.test tests
+// reusable slimerjs/phantomjs script for running clojurescript.test tests
 // see http://github.com/cemerick/clojurescript.test for more info
 
 var p = require('webpage').create();

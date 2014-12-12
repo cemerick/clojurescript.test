@@ -38,7 +38,7 @@ p.onError = function(msg) {
   }
 };
 
-p.onConsoleMessage = function (x) {
+p.onCallback = function (x) {
   var line = x.toString();
   if (line !== "[NEWLINE]") {
     console.log(line.replace(/\[NEWLINE\]/g, "\n"));
@@ -47,7 +47,8 @@ p.onConsoleMessage = function (x) {
 
 p.evaluate(function () {
   cemerick.cljs.test.set_print_fn_BANG_(function(x) {
-    console.log(x.replace(/\n/g, "[NEWLINE]")); // since console.log *itself* adds a newline
+    // using callPhantom to work around https://github.com/laurentj/slimerjs/issues/223
+    window.callPhantom(x.replace(/\n/g, "[NEWLINE]")); // since console.log *itself* adds a newline
   });
 });
 

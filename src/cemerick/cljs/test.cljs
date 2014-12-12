@@ -195,21 +195,21 @@ argument immediately, and no watcher will be registered."
       (println (testing-contexts-str test-env)))
    (when-let [message (:message m)] (println message))))
 
-(defmethod report :summary [{:keys [test pass fail error] :as test-env}]
+(defmethod report :summary [{:keys [test pass fail error async] :as test-env}]
   (with-test-out test-env
-   (println "\nRan" test "tests containing"
-            (+ pass fail error) "assertions.")
-   (println "Testing complete:" fail "failures," error "errors.")
-   (when-let [^number pending-count
-            (and (not (testing-complete? test-env))
-                 (->> @(:async  test-env)
-                      ((juxt ::remaining ::running))
-                      (map count)
-                      (apply +)))]
-     (println "Waiting on" pending-count
-              (str "asynchronous test"
-                   (when (> pending-count 1) "s")
-                   " to complete.")))))
+    (let [^number pending-count (and (not (testing-complete? test-env))
+                                  (->> @async
+                                    ((juxt ::remaining ::running))
+                                    (map count)
+                                    (apply +)))]
+      (println "\nRan" test (if pending-count "synchronous" "") "tests containing"
+        (+ pass fail error) "assertions.")
+      (println "Testing complete:" fail "failures," error "errors.")
+      (when pending-count
+        (println "Waiting on" pending-count
+          (str "asynchronous test"
+            (when (> pending-count 1) "s")
+            " to complete."))))))
 
 (defmethod report :begin-test-ns [{:keys [ns test-env async] :as m}]
   (with-test-out test-env

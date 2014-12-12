@@ -20,7 +20,19 @@
                         :compiler {:output-to "target/cljs/advanced.js"
                                    :optimizations :advanced
                                    :pretty-print true}}]
-              :test-commands {; PhantomJS tests
+              :test-commands {"slimer-whitespace" ["xvfb-run" "-a" "slimerjs" :runner
+                                                   "window.literal_js_was_evaluated=true"
+                                                   "target/cljs/whitespace.js"
+                                                   "test/cemerick/cljs/test/extra_test_command_file.js"]
+                              "slimer-simple" ["xvfb-run" "-a" "slimerjs" :runner
+                                               "window.literal_js_was_evaluated=true"
+                                               "target/cljs/simple.js"
+                                               "test/cemerick/cljs/test/extra_test_command_file.js"]
+                              "slimer-advanced" ["xvfb-run" "-a" "slimerjs" :runner
+                                                 "window.literal_js_was_evaluated=true"
+                                                 "target/cljs/advanced.js"
+                                                 "test/cemerick/cljs/test/extra_test_command_file.js"]
+
                               "phantom-whitespace" ["phantomjs" :runner
                                                     "window.literal_js_was_evaluated=true"
                                                     "target/cljs/whitespace.js"

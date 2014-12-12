@@ -9,7 +9,7 @@ for (var i = 1; i < sys.args.length; i++) {
     if (fs.exists(sys.args[i])) {
         if (!p.injectJs(sys.args[i])) throw new Error("Failed to inject " + sys.args[i]);
     } else {
-        p.evaluateJavaScript("(function () { " + sys.args[i] + ";" + " })");
+	p.evaluate(function (expr) { eval(expr); }, sys.args[i]);
     }
 }
 

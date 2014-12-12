@@ -144,16 +144,10 @@ corollary to clojure.test's `test-var`.
 ### Using with lein-cljsbuild
 
 Most people use [lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild) to
-automate their ClojureScript builds.  It also provides a test runner, originally
-intended for use with e.g. [phantomjs](http://phantomjs.org/) (though there are
-[rumors](https://github.com/cemerick/clojurescript.test/issues/10) that it works
-nicely with `slimerjs` as well) to run tests that use existing JavaScript test
-frameworks.  However, you can easily use the same facility to run
-clojurescript.test tests.
-
-This is an excerpt of the lein-cljsbuild configuration that this project uses to
-run its own clojurescript.test tests (look in the `project.clj` file for the full
-monty):
+automate their ClojureScript builds. Using clojurescript.test within that
+context is easy. Here is an excerpt of the lein-cljsbuild configuration that this project uses to
+run its own clojurescript.test tests (look in the `project.clj` file for
+examples using `phantomjs`, `slimerjs`, `node`, and `rhino`):
 
 ```clojure
 :plugins [[lein-cljsbuild "1.0.0"]
@@ -188,7 +182,7 @@ properties...see the subsection below on using this capability, especially in
 conjunction with advanced compilation).
 
 clojurescript.test bundles test runner scripts for various environments
-(currently, phantomjs, node.js and rhino).  As long as you add
+(currently, phantomjs and slimerjs, node.js, and rhino).  As long as you add
 clojurescript.test to your `project.clj` as a `:plugin`, then it will replace
 any occurrences of `:runner`, `:node-runner` and `:rhino-runner` in your
 `:test-commands` vectors with the path to the corresponding test runner script.
@@ -198,6 +192,24 @@ clojurescript.test will replace _namespaced_ corollaries to these test runner
 keywords (`:cljs.test/runner`, `:cljs.test/node-runner`, and
 `:cljs.test/rhino-runner`). This allows you to have paths to clojurescript.test
 runner scripts injected anywhere into your `project.clj` you like.
+
+##### SlimerJS and PhantomJS
+
+Though the `:runner` test runner is compatible with both of these scriptable browser
+environments, SlimerJS is currently recommended because:
+
+* It can use effectively any version of Firefox / XULRunner (PhantomJS has been
+  stuck on a very old version of webkit for years now), and so effectively all
+  of the "modern" browser/web platform APIs are available to test.
+* It is reasonably fast (faster than phantomjs, though still ~40% slower than
+  node)
+* It can easily be run headlessly, via `xvfb`
+
+Check out the SlimerJS `:test-commands` in `project.clj` for examples of how to
+best use `xvfb` and `slimerjs` together, and look at `.travis.yml` for an
+example of how to arrange your TravisCI configuration such that both of these
+tools are available there (analogous configuration can be applied in any other
+CI or automated environment of your choice).
 
 ##### Node.js
 
@@ -471,14 +483,15 @@ suite:
 
 ##### Portably testing core.async code with clojurescript.test and clojure.test
 
-Clojure's clojure.test does not provide any control over test lifecycle to accommodate
-assertions being performed in asynchronously-executed code paths, i.e. there is
-no `done` to call when we want a test to be considered complete.  To work around
-this, clojurescript.test includes `cemerick.cljs.test/block-or-done` macro, which enables one to test code that uses the only
-Clojure/ClojureScript portable asynchrony option, core.async.  In Clojure, `block-or-done`
-will block the completion of the enclosing clojure.test `deftest` until the
-provided channel is yields a value; in ClojureScript, `block-or-done` will call
-`(done)` when the provided channel yields a value.
+Clojure's clojure.test does not provide any control over test lifecycle to
+accommodate assertions being performed in asynchronously-executed code paths,
+i.e. there is no `done` to call when we want a test to be considered complete.
+To work around this, clojurescript.test includes
+`cemerick.cljs.test/block-or-done` macro, which enables one to test code that
+uses the only Clojure/ClojureScript portable asynchrony option, core.async.  In
+Clojure, `block-or-done` will block the completion of the enclosing clojure.test
+`deftest` until the provided channel is yields a value; in ClojureScript,
+`block-or-done` will call `(done)` when the provided channel yields a value.
 
 This allows us to write the above core.async-using test in a portable way, that
 will work on either Clojure or ClojureScript:
@@ -583,7 +596,7 @@ have questions or would like to contribute patches.
 
 ## License
 
-Copyright © 2013 Chas Emerick and other contributors.  Known contributors to
+Copyright © 2013-* Chas Emerick and other contributors.  Known contributors to
 `clojure.test` (which was the initial raw ingredient for this project) at the
 time of this project's inception were:
 

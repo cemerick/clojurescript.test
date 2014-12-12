@@ -205,6 +205,9 @@ environments, SlimerJS is currently recommended because:
   node)
 * It can easily be run headlessly, via `xvfb`
 
+In general, you should [download and use the latest "lightweight" `slimerjs`
+build](http://slimerjs.org/download.html).
+
 Check out the SlimerJS `:test-commands` in `project.clj` for examples of how to
 best use `xvfb` and `slimerjs` together, and look at `.travis.yml` for an
 example of how to arrange your TravisCI configuration such that both of these

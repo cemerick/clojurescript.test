@@ -77,7 +77,7 @@
                    :output-path "target/generated/cljs"
                    :rules :cljs}]}
   
-  :profiles {:dev {:dependencies [[org.clojure/core.async "0.1.338.0-5c5012-alpha" #_ "0.1.346.0-17112a-alpha"]]
+  :profiles {:dev {:dependencies [[org.clojure/core.async "0.1.346.0-17112a-alpha"]]
                    :plugins [[lein-cljsbuild "1.0.3"]
                              [com.keminglabs/cljx "0.5.0"]
                              [com.cemerick/austin "0.1.5-SNAPSHOT"]]}

@@ -1,5 +1,19 @@
 ## [clojurescript.test](http://github.com/cemerick/clojurescript.test) changelog
 
+### [`0.3.3`](https://github.com/cemerick/clojurescript.test/issues?q=milestone%3A0.3.3)
+
+* The PhantomJS-compatible test runner (`:runner`) has been significantly
+  improved:
+  * now fully supports [SlimerJS](http://slimerjs.org), which is now the
+    "recommended default" JavaScript environment for clojurescript.test (see the
+    README for SlimerJS setup instructions, etc) (gh-10)
+  * All JavaScript sources test sources and expressions are now folded into a
+    static HTML page that is loaded into PhantomJS/SlimerJS, in order to
+    eliminate JavaScript security context violations (gh-77)
+* clojurescript.test now supports the latest core.async release (`0.1.346.0-17112a-alpha`)
+* The reporting of synchronous / asynchronous test summary information has been
+  improved (gh-82)
+
 ### [`0.3.2`](https://github.com/cemerick/clojurescript.test/issues?q=milestone%3A0.3.2)
 
 * The nodejs test runner now prints the original error before checking if

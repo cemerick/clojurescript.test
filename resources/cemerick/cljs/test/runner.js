@@ -14,11 +14,16 @@ var html = "";
 var pagePath = sys.args[0] + ".html";
 
 for (var i = 1; i < sys.args.length; i++) {
+    var src;
+
     if (fs.exists(sys.args[i])) {
-	html += "<script>//<![CDATA[\n" + fs.read(sys.args[i]) + "\n//]]></script>";
+	src = fs.read(sys.args[i]);
     } else {
-	html += "<script>//<![CDATA[\n" + sys.args[i] + "\n//]]></script>";
+	if (sys.args[i].match(/\.js$/)) console.log("WARNING: additional cljsbuild :test-command argument looks like a filename, but file does not exist, including as JavaScript expression: " + sys.args[i]);
+	src = sys.args[i];
     }
+
+    html += "<script>//<![CDATA[\n" + src + "\n//]]></script>";
 }
 
 html = "<html><head>" + html + "</head><body></body></html>";

@@ -55,6 +55,11 @@
 
 (defrecord TestContext [test-env test-name])
 
+(defn assert-test-context [test-ctx]
+  (if (instance? TestContext test-ctx)
+    test-ctx
+    (throw (js/Error. "No test context; you're probably using `is` outside of a `deftest` or `with-test-ctx` form, and without explicitly binding `-test-ctx` or passing the current asynchronous test context. Read the async testing docs in the README for details."))))
+
 ;;; UTILITIES FOR REPORTING FUNCTIONS
 
 (defn- maybe-deref

@@ -269,7 +269,7 @@ This macro emits [body] without decoration when used in a Clojure environment."
   []
   (if (contains? (:locals &env) '-test-ctx)
     '-test-ctx
-    `*test-ctx*))
+    `(assert-test-context *test-ctx*)))
 
 ;;; UTILITIES FOR ASSERTIONS
 

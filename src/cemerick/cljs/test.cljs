@@ -138,7 +138,8 @@ argument immediately, and no watcher will be registered."
      :added "1.1"}
   report :type)
 
-; TODO this just doesn't work, at least not on the REPL
+; this only works in mozilla-based runners (SlimerJS)
+; https://github.com/cemerick/clojurescript.test/issues/84
 (defn- file-and-line 
   [error]
   {:file (.-fileName error) :line (.-lineNumber error)})

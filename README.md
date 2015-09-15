@@ -596,6 +596,12 @@ your cljsc/lein-cljsbuild configuration.
  * `function?`
  * `*stack-trace-depth*`
 
+## Debug tests
+
+If you would like to debug tests - load compiled ClojureScipt to your favorite browser and run:
+
+`cemerick.cljs.test.run_all_tests()`
+
 ## Need Help?
 
 Send a message to the

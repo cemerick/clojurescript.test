@@ -1,5 +1,11 @@
 # clojurescript.test [![Build Status](https://travis-ci.org/cemerick/clojurescript.test.png?branch=master)](https://travis-ci.org/cemerick/clojurescript.test)
 
+<h2 style="font-size:300%;font-weight:bold">DEPRECATED</h2>
+
+I strongly suggest migrating to use the official core cljs.test + https://github.com/bensu/doo for test-runners and leiningen/boot integration. Thanks to all contributors for helping make testing ClojureScript workable until those tools arrived/matured!
+
+--------
+
 A maximal port of `clojure.test` to ClojureScript.
 
 ## Why?

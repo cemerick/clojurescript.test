@@ -52,7 +52,7 @@
 
 (deftest can-test-thrown-with-msg
   ;; coming up with error messages that are standard across js runtime isn't easy...
-  (is (thrown-with-msg? js/SyntaxError #"[Uu]nterminated parenthetical|Invalid regular expression"
+  (is (thrown-with-msg? js/SyntaxError #"[Uu]nterminated parenthetical|Invalid regular expression|Unclosed group"
         ;; Use eval to prevent advanced mode from transforming it into a literal.
         ((js/eval "RegExp") "f(")) "Should pass")
   ;; Wrong message string:

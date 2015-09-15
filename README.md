@@ -153,7 +153,7 @@ Most people use [lein-cljsbuild](https://github.com/emezeske/lein-cljsbuild) to
 automate their ClojureScript builds. Using clojurescript.test within that
 context is easy. Here is an excerpt of the lein-cljsbuild configuration that this project uses to
 run its own clojurescript.test tests (look in the `project.clj` file for
-examples using `phantomjs`, `slimerjs`, `node`, and `rhino`):
+examples using `phantomjs`, `slimerjs`, `node`, `rhino`, and `nashorn`):
 
 ```clojure
 :plugins [[lein-cljsbuild "1.0.0"]
@@ -188,15 +188,17 @@ properties...see the subsection below on using this capability, especially in
 conjunction with advanced compilation).
 
 clojurescript.test bundles test runner scripts for various environments
-(currently, phantomjs and slimerjs, node.js, and rhino).  As long as you add
+(currently, phantomjs and slimerjs, node.js, rhino, and Nashorn).  As long as you add
 clojurescript.test to your `project.clj` as a `:plugin`, then it will replace
-any occurrences of `:runner`, `:node-runner` and `:rhino-runner` in your
-`:test-commands` vectors with the path to the corresponding test runner script.
+any occurrences of `:runner`, `:node-runner`, `:rhino-runner`, and
+`:nashorn-runner` in your `:test-commands` vectors with the path to
+the corresponding test runner script.
 
 _Outside_ of the `:test-commands` vector in your `:cljsbuild` configuration,
 clojurescript.test will replace _namespaced_ corollaries to these test runner
-keywords (`:cljs.test/runner`, `:cljs.test/node-runner`, and
-`:cljs.test/rhino-runner`). This allows you to have paths to clojurescript.test
+keywords (`:cljs.test/runner`, `:cljs.test/node-runner`, 
+`:cljs.test/rhino-runner`, `:cljs.test/nashorn-runner`).
+This allows you to have paths to clojurescript.test
 runner scripts injected anywhere into your `project.clj` you like.
 
 ##### SlimerJS and PhantomJS
@@ -248,6 +250,26 @@ vectors like so:
 ```
 
 Note that rhino doesn't support any HTML or DOM related functions and objects so
+it can be used mainly for business-only logic or you have to mock all DOM
+functions by yourself.
+
+All test runner scripts load the output of the ClojureScript compilation, run
+all of the tests found therein, reports on them, and fails the build if
+necessary.
+
+##### Nashorn
+
+To run your tests with [Nashorn](http://openjdk.java.net/projects/nashorn/),
+change the executable name and the `:runner` keyword in your `:test-commands`
+vectors like so:
+
+```clojure
+:test-commands {"unit-tests" ["jrunscript" "-f" :nashorn-runner"
+                              ; extra code/files here...
+                             ]}
+```
+
+Note that Nashorn doesn't support any HTML or DOM related functions and objects so
 it can be used mainly for business-only logic or you have to mock all DOM
 functions by yourself.
 

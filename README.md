@@ -157,7 +157,7 @@ examples using `phantomjs`, `slimerjs`, `node`, and `rhino`):
 
 ```clojure
 :plugins [[lein-cljsbuild "1.0.0"]
-          [com.cemerick/clojurescript.test "0.2.3"]]
+          [com.cemerick/clojurescript.test "0.3.1"]]
 :cljsbuild {:builds [{:source-paths ["src" "test"]
                       :compiler {:output-to "target/cljs/testable.js"
                                  :optimizations :whitespace

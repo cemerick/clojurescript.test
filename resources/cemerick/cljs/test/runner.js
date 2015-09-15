@@ -32,7 +32,7 @@ fs.write(pagePath, html, 'w');
 p.open("file://" + pagePath, function () {
     fs.remove(pagePath);
 
-    p.onError = function(msg) {
+    p.onError = function(msg, trace) {
 	var haveCljsTest = p.evaluate(function() {
 	    return (typeof cemerick !== "undefined" &&
 		    typeof cemerick.cljs !== "undefined" &&
@@ -41,6 +41,9 @@ p.open("file://" + pagePath, function () {
 	});
 
 	console.error(msg);
+	console.error(trace.map(function(t) {
+		return ' -> ' + t.file + ': ' + t.line + (t.function ? ' (in function "' + t.function +'")' : '');
+	}).join('\n'));
 
 	if (!haveCljsTest) {
 	    var messageLines = [

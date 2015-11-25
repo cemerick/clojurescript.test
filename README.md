@@ -2,7 +2,7 @@
 
 <h2 style="font-size:300%;font-weight:bold">DEPRECATED</h2>
 
-I strongly suggest migrating to use the official core cljs.test + https://github.com/bensu/doo for test-runners and leiningen/boot integration. Thanks to all contributors for helping make testing ClojureScript workable until those tools arrived/matured!
+I strongly suggest migrating to use the official core [cljs.test](https://github.com/clojure/clojurescript/wiki/Testing) + https://github.com/bensu/doo for test-runners and leiningen/boot integration. Thanks to all contributors for helping make testing ClojureScript workable until those tools arrived/matured!
 
 --------
 
